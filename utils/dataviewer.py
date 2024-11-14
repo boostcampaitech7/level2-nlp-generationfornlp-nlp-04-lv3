@@ -46,6 +46,16 @@ def view_row(row):
         st.markdown(f"{i+1}: {choice}", unsafe_allow_html=True)
 
 
+def data_page(df):
+    train_tab, test_tab = st.tabs(["Train", "Test"])
+
+    with train_tab:
+        view_data(df["train"])
+
+    with test_tab:
+        view_data(df["test"])
+
+
 def main(dir_path):
     # 화면 레이아웃 설정
     st.set_page_config(layout="wide", page_title="SEVEN ELEVEN ODQA Data Viewer V2.0.0")
@@ -61,17 +71,6 @@ def main(dir_path):
 
     if page == "Data Page":
         data_page(df)
-
-
-def data_page(df):
-
-    train_tab, test_tab = st.tabs(["Train", "Test"])
-
-    with train_tab:
-        view_data(df["train"])
-
-    with test_tab:
-        view_data(df["test"])
 
 
 if __name__ == "__main__":
