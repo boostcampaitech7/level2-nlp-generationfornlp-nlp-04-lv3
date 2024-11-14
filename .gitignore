@@ -1,0 +1,7 @@
+outputs/
+wandb/
+.env
+__pycache__
+data/
+checkpoints/
+predictions/

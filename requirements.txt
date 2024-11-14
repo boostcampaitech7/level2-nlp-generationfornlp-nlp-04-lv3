@@ -1,0 +1,13 @@
+ipykernel
+ipywidgets
+torch
+transformers
+trl
+scikit-learn
+matplotlib
+evaluate
+peft
+python-dotenv
+wandb
+pre-commit
+commitizen

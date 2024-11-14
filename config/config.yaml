@@ -1,0 +1,19 @@
+model_name: beomi/gemma-ko-2b
+data:
+  dataset_name: default
+  module_name: KSATDataModule
+  preprocessing_num_workers: 4
+  max_seq_length: 1024
+  max_answer_length: 30
+  doc_stride: 128
+  batch_size: 16
+  prompt_func: simple_prompt
+trainer_type: SFT     # Options: SFT, PPO, DPO
+training_params:
+  num_epochs: 2
+  batch_size: 2
+  learning_rate: 2e-5
+  output_dir: outputs
+  max_seq_length: 1024
+wandb:
+  project: GenerationNLP
