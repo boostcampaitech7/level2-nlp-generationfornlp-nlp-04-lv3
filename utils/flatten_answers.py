@@ -12,7 +12,7 @@ ROOT_DIR = os.getenv("ROOT_DIR")
 # 1. train.csv 파일 로드
 df = pd.read_csv(f"{ROOT_DIR}/data/default/train.csv")
 
-# 2. 'problems' 열을 딕셔너리로 변환
+# 2. 'problems' 열을 딕셔너리로 변환하여 새로운 열 'question_plus'에 저장
 df["question_plus"] = df["problems"].apply(ast.literal_eval)
 
 
@@ -105,8 +105,8 @@ for idx, row in df.iterrows():
     balanced_answers.append(target_position)
 
 
-# 8. 수정된 선택지와 답을 'problems' 열에 반영
-def update_problems(row, new_choices, new_answer):
+# 8. 수정된 선택지와 답을 기존 'problems' 열에 반영
+def create_balanced_problems(row, new_choices, new_answer):
     q_plus = row["question_plus"]
     updated_q_plus = {
         "question": q_plus["question"],
@@ -118,7 +118,7 @@ def update_problems(row, new_choices, new_answer):
 
 
 df["problems"] = df.apply(
-    lambda row: update_problems(
+    lambda row: create_balanced_problems(
         row, balanced_choices[row.name], balanced_answers[row.name]
     ),
     axis=1,
@@ -143,5 +143,4 @@ def print_final_distribution(df):
 print_final_distribution(df)
 
 # 10. 변경 사항을 새로운 파일로 저장 (필요 시)
-df.drop(columns=["question_plus"], inplace=True)  # 임시 열 제거
 df.to_csv(f"{ROOT_DIR}/data/default/flatten_answers_train.csv", index=False)

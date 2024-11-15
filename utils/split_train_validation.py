@@ -10,7 +10,7 @@ load_dotenv()
 ROOT_DIR = os.getenv("ROOT_DIR")
 
 # 1. Balanced된 데이터 로드
-df = pd.read_csv(f"{ROOT_DIR}/data/default/flatten_answers_train.csv")
+df = pd.read_csv(f"{ROOT_DIR}/data/default/train.csv")
 
 
 # 2. 'problems' 열을 파싱하여 'answer'와 'num_choices' 추출

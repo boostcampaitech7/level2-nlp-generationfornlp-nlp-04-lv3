@@ -1,6 +1,6 @@
 model_name: beomi/gemma-ko-2b
 data:
-  dataset_name: default
+  dataset_name: flatten
   module_name: KSATDataModule
   preprocessing_num_workers: 4
   max_seq_length: 1024
@@ -10,7 +10,7 @@ data:
   prompt_func: simple_prompt
 trainer_type: SFT     # Options: SFT, PPO, DPO
 training_params:
-  num_epochs: 2
+  num_epochs: 3
   batch_size: 2
   learning_rate: 2e-5
   output_dir: outputs

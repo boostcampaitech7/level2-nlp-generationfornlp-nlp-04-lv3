@@ -3,6 +3,20 @@ import pandas as pd
 import ast
 
 
+def view_row(row):
+    paragraph = row["paragraph"]
+    problems = ast.literal_eval(row["problems"])
+    question = problems["question"]
+    choices = problems["choices"]
+
+    # ==========
+    if "is_exist" in row and row["is_exist"] == 0:
+        st.markdown(f"#### 사회 문제")
+    elif "is_exist" in row and row["is_exist"] == 1:
+        st.markdown(f"#### 국어 문제")
+    # ==========
+
+
 def view_data(df):
     select_options = [
         f'{row["id"]}: {ast.literal_eval(row["problems"])["question"]}'
