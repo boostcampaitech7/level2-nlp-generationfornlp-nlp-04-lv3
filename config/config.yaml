@@ -1,6 +1,6 @@
-model_name: beomi/gemma-ko-2b
+model_name: jungyuko/DAVinCI-42dot_LLM-PLM-1.3B-v1.1
 data:
-  dataset_name: flatten
+  dataset_name: clean
   module_name: KSATDataModule
   preprocessing_num_workers: 4
   max_seq_length: 1024
@@ -10,10 +10,10 @@ data:
   prompt_func: simple_prompt
 trainer_type: SFT     # Options: SFT, PPO, DPO
 training_params:
-  num_epochs: 3
+  num_epochs: 2
   batch_size: 2
   learning_rate: 2e-5
   output_dir: outputs
   max_seq_length: 1024
 wandb:
-  project: GenerationNLP
+  project: test
