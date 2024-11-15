@@ -47,13 +47,17 @@ def simple_prompt(example):
             question=example["question"],
             choices=choices_string,
         )
+
+    messages = [
+        {"role": "system", "content": "지문을 읽고 질문의 답을 구하세요."},
+        {"role": "user", "content": user_message.strip()},
+    ]
+    if example["answer"]:
+        messages.append({"role": "assistant", "content": f"{example['answer']}"})
+
     chat_message = {
         "id": example["id"],
-        "messages": [
-            {"role": "system", "content": "지문을 읽고 질문의 답을 구하세요."},
-            {"role": "user", "content": user_message},
-            {"role": "assistant", "content": f"{example['answer']}"},
-        ],
+        "messages": messages,
         "label": example["answer"],
         "len_choices": len_choices,
     }
