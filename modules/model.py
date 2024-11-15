@@ -61,8 +61,9 @@ class KsatModel:
 
     @staticmethod
     def _get_chat_template(model_name):
+        # chat template은 반드시 정답 번호<eos token>\n
         if model_name == "beomi/gemma-ko-2b":
-            chat_template = "{% if messages[0]['role'] == 'system' %}{% set system_message = messages[0]['content'] %}{% endif %}{% if system_message is defined %}{{ system_message }}{% endif %}{% for message in messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<start_of_turn>user\n' + content + '<end_of_turn>\n<start_of_turn>model\n' }}{% elif message['role'] == 'assistant' %}{{ content + '<end_of_turn>\n' }}{% endif %}{% endfor %}"
+            chat_template = "{% if messages[0]['role'] == 'system' %}{% set system_message = messages[0]['content'] %}{% endif %}{% if system_message is defined %}{{ system_message }}{% endif %}{% for message in messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<start_of_turn>user\n' + content + '<end_of_turn>\n<start_of_turn>model\n' }}{% elif message['role'] == 'assistant' %}{{ content + '<end_of_turn>' }}{% endif %}{% endfor %}"
         else:
             chat_template = ""
         return chat_template
@@ -70,7 +71,9 @@ class KsatModel:
     @staticmethod
     def _get_response_template(model_name):
         if model_name == "beomi/gemma-ko-2b":
-            response_template = "<start_of_turn>model"
+            response_template = "<start_of_turn>model\n"
+        elif model_name == "Bllossom/llama-3.2-Korean-Bllossom-3B":
+            response_template = "<|start_header_id|>assistant<|end_header_id|>\n\n"
         else:
             response_template = ""
         return response_template

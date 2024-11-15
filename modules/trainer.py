@@ -46,9 +46,10 @@ class KsatTrainer:
             labels = model_module.tokenizer.batch_decode(
                 labels, skip_special_tokens=True
             )
-            labels = list(map(lambda x: x.split("<end_of_turn>")[0].strip(), labels))
+            # 정답 숫자만 추출
+            labels = list(map(lambda x: x.strip()[0], labels))
+            # 0~4로 인덱싱
             labels = list(map(lambda x: int_output_map[x], labels))
-
             # calculate predictions
             probs = torch.nn.functional.softmax(torch.tensor(logits).cuda(), dim=-1)
             predictions = np.argmax(probs.cpu(), axis=-1)
@@ -111,8 +112,8 @@ class KsatTrainer:
 
         trainer = SFTTrainer(
             model=model_module.model,
-            train_dataset=data_module.train_examples,
-            eval_dataset=data_module.eval_examples,
+            train_dataset=data_module.train_examples.select(range(10)),
+            eval_dataset=data_module.eval_examples.select(range(10)),
             tokenizer=model_module.tokenizer,
             data_collator=data_collator,
             compute_metrics=compute_metrics,
