@@ -112,8 +112,8 @@ class KsatTrainer:
 
         trainer = SFTTrainer(
             model=model_module.model,
-            train_dataset=data_module.train_examples.select(range(10)),
-            eval_dataset=data_module.eval_examples.select(range(10)),
+            train_dataset=data_module.train_examples,
+            eval_dataset=data_module.eval_examples,
             tokenizer=model_module.tokenizer,
             data_collator=data_collator,
             compute_metrics=compute_metrics,
