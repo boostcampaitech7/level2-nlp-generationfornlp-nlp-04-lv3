@@ -5,8 +5,8 @@ import ast
 
 def download_and_merge_kmmlu(output_file="KMMLU_korean_history_data.csv"):
     """
-    Hugging Face에서 KMMLU 데이터셋의 모든 하위 데이터셋을 다운로드하고 병합합니다.
-    병합된 데이터는 'KMMLU_merged_data.csv' 파일로 저장됩니다.
+    Hugging Face에서 KMMLU 데이터셋의 korean-history 데이터셋을 다운로드하고 병합합니다.
+    병합된 데이터는 'KMMLU_korean_history_data.csv' 파일로 저장됩니다.
     """
     # 모든 subset 데이터를 담을 리스트
     all_data = []
@@ -30,13 +30,12 @@ def download_and_merge_kmmlu(output_file="KMMLU_korean_history_data.csv"):
 def extract_matching_data(original_data_path):
     """
     원본 데이터 파일에서 병합된 KMMLU 데이터셋에 포함된 데이터만 추출합니다.
-    KMMLU 데이터의 'subset' 컬럼도 원본 데이터에 추가하여 저장합니다.
 
     Args:
         original_data_path (str): 원본 데이터 파일 경로 (CSV 형식이어야 함)
     """
     # 병합된 KMMLU 데이터셋 불러오기
-    kmmlu_data = pd.read_csv("kmmlu_history.csv")
+    kmmlu_data = pd.read_csv("KMMLU_korean_history_data.csv")
 
     # 원본 데이터 불러오기
     original_data = pd.read_csv(original_data_path)
