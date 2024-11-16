@@ -2,31 +2,7 @@ import pdfplumber
 import re
 import json
 from PyPDF2 import PdfReader
-
-# PDF 파일 열기
-"""
-reader = PdfReader("/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/7급공채_2020_경제학.pdf")
-
-# 모든 페이지 텍스트 추출
-for page in reader.pages:
-    print(fr"{page.extract_text()}")
-    print('--------')
-"""
-# PDF 파일 열기
-
-"""
-with pdfplumber.open("/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/7급공채_2020_경제학.pdf") as pdf:
-    for page in pdf.pages:
-        # 텍스트 추출
-        print(page.extract_text())
-
-        # 테이블 추출
-        tables = page.extract_tables()
-        for table in tables:
-            print(table)
-
-
-"""
+import unicodedata
 
 
 class ExtractGrade7Exam:
@@ -171,6 +147,40 @@ class ExtractGrade7Exam:
         return result_list
 
 
+# 질문과 정답 매핑 함수
+def map_question_answer(q_file, a_file):
+
+    # 데이터 가져오기
+    with open(q_file, "r", encoding="utf-8") as json_file:
+        data = json.load(json_file)
+
+    # 정답 찾기
+    answer_list = []
+    subject_name = q_file.split(".")[0].split("_")[-1]
+    with pdfplumber.open(a_file) as pdf:
+        for page in pdf.pages:
+            tables = page.extract_tables()
+
+            if tables:
+                for table in tables:
+                    for row in table:
+                        if unicodedata.normalize(
+                            "NFC", row[1]
+                        ) == unicodedata.normalize("NFC", subject_name):
+                            answer_list = row[3:]
+                            print(len(answer_list))
+                            break
+
+    for index, row in enumerate(data):
+        answer = answer_list[int(row["question_id"].split(" ")[-1]) - 1]
+        data[index]["answer"] = answer
+
+    with open(
+        f"{q_file.split('/')[-1].split('.')[0]}_정답포함.json", "w", encoding="utf-8"
+    ) as json_file:
+        json.dump(data, json_file, ensure_ascii=False, indent=4)
+
+
 if __name__ == "__main__":
     file_path_list = [
         "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2020_심리학.pdf",
@@ -182,4 +192,40 @@ if __name__ == "__main__":
     for file_path in file_path_list:
         extract_data = ExtractGrade7Exam(file_path)
         extract_data.run()
-    # extract_data.split_last_line_left_right()
+
+    """
+    # 질문과 정답 매핑
+    political_path = [
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/political/7급공채_2020_국제정치학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/political/7급공채_2021_국제정치학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/political/7급공채_2022_국제정치학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/political/7급공채_2023_국제정치학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/political/7급공채_2024_국제정치학.json",
+    ]
+    psychology_path = [
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2020_심리학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2021_심리학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2022_심리학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2023_심리학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2024_심리학.json",
+    ]
+    economy_path = [
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/economy/7급공채_2020_경제학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/economy/7급공채_2021_경제학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/economy/7급공채_2022_경제학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/economy/7급공채_2023_경제학.json",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/economy/7급공채_2024_경제학.json",
+    ]
+    answer_path = [
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/answer/7급공채_2020_정답.pdf",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/answer/7급공채_2021_정답.pdf",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/answer/7급공채_2022_정답.pdf",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/answer/7급공채_2023_정답.pdf",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/answer/7급공채_2024_정답.pdf",
+    ]
+
+    for a, b, c, d in zip(political_path, psychology_path, economy_path, answer_path):
+        map_question_answer(a, d)
+        map_question_answer(b, d)
+        map_question_answer(c, d)
+    """
