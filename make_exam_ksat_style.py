@@ -186,7 +186,7 @@ paragraph_1 = (
 )
 
 # Call the function to generate a question
-domain = "creative"  # Change to  "factual", "inferential", "critical", or "creative" as needed
+domain = "inferential"  # Change to  "factual", "inferential", "critical", or "creative" as needed
 question_output = route_paragraph_and_generate(paragraph_1, domain)
 print("Generated Question and Answer Choices:")
 print(question_output)
