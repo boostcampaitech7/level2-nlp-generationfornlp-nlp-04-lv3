@@ -9,6 +9,7 @@ class ExtractGrade7Exam:
 
     def __init__(self, file_path):
         self.file_path = file_path
+        self.q_start_pattern = r"^(문 (\d{2}|\d{1})\.\s|(\d{2}|\d{1})\.\s)"
 
     def run(self):
         question_list = list()
@@ -40,14 +41,14 @@ class ExtractGrade7Exam:
         # 해당 페이지의 첫 문제 시작 줄 찾기
         while page:
             line = page[0]
-            if re.match(r"^문 (\d{2}|\d{1})\.", line["text"]):
+            if re.match(self.q_start_pattern, line["text"]):
                 break
             page.popleft()
 
         # 문제 추출
         while page:
             line = page.popleft()
-            match = re.match(r"^문 (\d{2}|\d{1})\.", line["text"])
+            match = re.match(self.q_start_pattern, line["text"])
             question_id = re.sub(f"[^0-9]", "", line["text"][: match.end()])
 
             # 1. 질문 추출
@@ -89,7 +90,7 @@ class ExtractGrade7Exam:
             # 선지 찾기
             choices = []
             while page:
-                if re.match(r"^문 (\d{2}|\d{1})\.", page[0]["text"]):
+                if re.match(self.q_start_pattern, page[0]["text"]):
                     break
                 choices.append(page.popleft())
 
@@ -99,11 +100,16 @@ class ExtractGrade7Exam:
             # 추출한 데이터(지문, 보기, 선지) 저장
             questionset = dict()
             questionset["question_id"] = question_id
-            questionset["question"] = " ".join([q["text"] for q in question])
+            questionset["question"] = re.sub(
+                self.q_start_pattern, "", " ".join([q["text"] for q in question])
+            )
             questionset["context"] = " ".join([c["text"] for c in context])
             questionset["choices"] = [
-                re.sub("(①|②|③|④|⑤)", "", choice["text"]) for choice in choices
-            ]
+                choice.strip()
+                for choice in re.split(
+                    r"(①|②|③|④|⑤)", " ".join([choice["text"] for choice in choices])
+                )
+            ][::2][1:]
             question_list.append(questionset)
 
         return question_list
@@ -161,10 +167,10 @@ def map_question_answer(q_file, a_file):
 if __name__ == "__main__":
     file_path_list = [
         # "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2020_심리학.pdf",
-        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2021_심리학.pdf",
+        # "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2021_심리학.pdf",
         # "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2022_심리학.pdf",
         # "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2023_심리학.pdf",
-        # "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2024_심리학.pdf",
+        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/psychology/7급공채_2024_심리학.pdf",
     ]
     for file_path in file_path_list:
         extract_data = ExtractGrade7Exam(file_path)
