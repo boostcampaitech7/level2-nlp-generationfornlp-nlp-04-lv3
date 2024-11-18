@@ -5,4 +5,5 @@ __pycache__
 data/
 checkpoints/
 predictions/
-aug_data/
+*.jsonl
+*.csv
