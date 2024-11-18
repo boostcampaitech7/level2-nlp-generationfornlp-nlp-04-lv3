@@ -1,8 +1,9 @@
 import os
 import re
+import ast
 import pandas as pd
-from PyPDF2 import PdfReader
 from dotenv import load_dotenv
+from PyPDF2 import PdfReader
 from pykospacing import Spacing
 
 
@@ -92,6 +93,50 @@ def extract_text(test_subject_kor, test_subject_eng, test_years):
     return df
 
 
+# 문제 데이터의 띄어쓰기를 교정하는 함수
+def correct_spacing_in_csv(test_subject_kor):
+    """
+    주어진 과목의 문제 데이터를 교정하여 저장합니다.
+    """
+    input_file = os.path.join(
+        os.getenv("ROOT_DIR"), f"grade9-exam-data/9급공채_{test_subject_kor}.csv"
+    )
+    spacing = Spacing()
+
+    df = pd.read_csv(input_file, encoding="utf-8")
+    for column in df.columns:
+        if column == "problems":
+            # 'problems' 컬럼에 띄어쓰기 교정
+            def correct_problems_spacing(problem_str):
+                try:
+                    problem_dict = ast.literal_eval(problem_str)
+                    if "question" in problem_dict:
+                        problem_dict["question"] = spacing(problem_dict["question"])
+                    if "choices" in problem_dict:
+                        problem_dict["choices"] = [
+                            spacing(choice) for choice in problem_dict["choices"]
+                        ]
+                    return str(problem_dict)
+                except Exception as e:
+                    print(f"Error processing problems column: {e}")
+                    return problem_str
+
+            df["problems"] = df["problems"].astype(str).apply(correct_problems_spacing)
+        else:
+            # 다른 텍스트 컬럼에 PyKoSpacing 적용
+            df[column] = (
+                df[column]
+                .astype(str)
+                .apply(lambda x: spacing(x) if pd.notnull(x) else x)
+            )
+    # 교정된 데이터를 저장
+    output_file = os.path.join(
+        os.getenv("ROOT_DIR"), f"grade9-exam-data/9급공채_{test_subject_kor}_clean.csv"
+    )
+    df.to_csv(output_file, index=False, encoding="utf-8")
+    print(f"교정된 CSV 파일이 {output_file}에 저장되었습니다.")
+
+
 # 메인 실행 함수
 def main():
     load_dotenv()
@@ -109,6 +154,8 @@ def main():
     for subject in subjects:
         # 문제 추출 및 저장
         extract_text(subject["kor"], subject["eng"], years)
+        # 추출된 문제 데이터 띄어쓰기 교정
+        correct_spacing_in_csv(subject["kor"])
 
 
 if __name__ == "__main__":
