@@ -293,7 +293,8 @@ class Seoul9Extractor(Extractor):
             elif bool(re.match(r"^①", text[1]["text"])):
                 key = "choices"
 
-            current_questionset[key].append(text)
+            if text[1]["text"] != "<보기>":
+                current_questionset[key].append(text)
 
         # 마지막 문제셋 처리
         if not self.is_with_image(
@@ -515,9 +516,9 @@ class PSATExtractor(Extractor):
         answer_key_dict = {
             "PSAT_2020": "영역 언어논리영역 책형 나 책형",
             "PSAT_2021": "영역 언어논리영역 책형 가 책형",
-            "PSAT_2022": "영역 언어논리영역 책형 ㉯ 책형",
-            "PSAT_2024": "영역 언어논리영역 책형 ㉮ 책형",
-            "PSAT_2023": "영역 언어논리영역 책형 ㉯ 책형",
+            "PSAT_2022": "영역 언어논리 책형 ㉯ 책형",
+            "PSAT_2023": "영역 언어논리 책형 ㉮ 책형",
+            "PSAT_2024": "영역 언어논리 책형 ㉯ 책형",
         }
 
         with pdfplumber.open(answer_pdf_path) as pdf:
@@ -583,6 +584,7 @@ class PoliceExtractor(Extractor):
                 self.texts.popleft()
             self.texts.pop()
             self.texts.pop()
+            self.texts.pop()
             self.find_questions()
         self.save_questions()
 
@@ -605,7 +607,7 @@ class PoliceExtractor(Extractor):
 
                 # 지문 텍스트 수집
                 while self.texts:
-                    if not bool(re.match(r"^\d+\.", self.texts[0][1]["text"])):
+                    if not bool(re.match(r"^\d+\. ", self.texts[0][1]["text"])):
                         text = self.texts.popleft()
                         current_questionset["paragraph"].append(text)
                     else:
@@ -629,7 +631,7 @@ class PoliceExtractor(Extractor):
                         if (
                             current_questionset["question"]
                             and (
-                                bool(re.match(r"^\d+\.", self.texts[0][1]["text"]))
+                                bool(re.match(r"^\d+\. ", self.texts[0][1]["text"]))
                                 or "다음 글을 읽고 물음에 답하시오"
                                 in self.texts[0][1]["text"]
                             )
@@ -761,6 +763,43 @@ class PoliceExtractor(Extractor):
         return answer_list
 
 
+def merge_data():
+    """
+    만들어진 csv 파일들을 하나로 합치는 함수
+    """
+    file_names = [
+        "seoul9_social_2019",
+        "seoul9_social_2020",
+        "seoul9_social_2021",
+        "PSAT_2020",
+        "PSAT_2021",
+        "PSAT_2022",
+        "PSAT_2023",
+        "PSAT_2024",
+        "police_2021",
+        "police_2022",
+        "police_2023",
+        "police_2024",
+        "police_2025",
+    ]
+
+    df_list = []
+    for file_name in file_names:
+        file_path = os.path.join(os.getenv("ROOT_DIR"), f"aug_data/{file_name}.csv")
+        try:
+            df = pd.read_csv(file_path)
+            df_list.append(df)
+        except:
+            continue
+
+    merged_df = pd.concat(df_list)
+    output_path = os.path.join(
+        os.getenv("ROOT_DIR"), f"aug_data/seoul9-social_PSAT_police.csv"
+    )
+    merged_df.to_csv(output_path, index=False, encoding="utf-8")
+    print(f"{output_path}에 저장되었습니다.")
+
+
 if __name__ == "__main__":
     load_dotenv()
     seoul9_social = [
@@ -772,7 +811,7 @@ if __name__ == "__main__":
         extractor = Seoul9Extractor(pdf_name)
         extractor.extract_questions()
 
-    for i in tqdm(range(0, 1)):
+    for i in tqdm(range(0, 5)):
         pdf_name = f"PSAT_202{i}"
         extractor = PSATExtractor(pdf_name)
         extractor.extract_questions()
