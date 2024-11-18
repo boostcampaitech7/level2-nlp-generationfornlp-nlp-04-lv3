@@ -1,7 +1,10 @@
 import pdfplumber
 import pandas as pd
 import re
+import os
+import ast
 
+# 1. DataExtractor Class
 class MilitaryKoreanDataExtractor:
     def __init__(self, pdf_path):
         self.pdf_path = pdf_path
@@ -126,14 +129,114 @@ class MilitaryKoreanDataExtractor:
         df.to_csv(output_csv_path, index=False)
         print("사관학교 국어영역이 CSV 파일로 변환되었습니다.")
 
+
+# 2. AnswerExtractor Class
+class MilitaryKoreanAnswerExtractor:
+    def __init__(self, pdf_path):
+        self.pdf_path = pdf_path
+        self.ans = ''
+
+    def extract_text(self):
+        with pdfplumber.open(self.pdf_path) as pdf:
+            for page in pdf.pages:
+                self.ans += page.extract_text()
+    
+    @staticmethod
+    def map_answer_to_number(answer):
+        answer_map = {'①': 1, '②': 2, '③': 3, '④': 4, '⑤': 5}
+        return answer_map.get(answer, None)  # 기본값으로 None 반환
+
+    
+    # 정답을 추출하기 위한 함수
+    def extract_answers(self):
+        # 문항 번호와 정답을 추출하는 정규 표현식
+        question_pattern = r'문항\s*(\d+(?:\s+\d+)*)\s*번호\s*정답\s*((?:①|②|③|④|⑤)(?:\s+(?:①|②|③|④|⑤))*)'
+        # 여러 구간에 대한 매칭을 처리하기 위해 findall 사용
+        matches = re.findall(question_pattern, self.text)
+        
+        # 문항 번호와 정답을 매칭하여 딕셔너리로 저장
+        answer_dict = {}
+        for match in matches:
+            questions = match[0].split()
+            answers = match[1].split()
+
+            # 문항 번호와 정답을 매칭하여 딕셔너리에 저장
+            for question, answer in zip(questions, answers):  
+                answer_dict[question] = self.map_answer_to_number(answer)
+        return answer_dict
+
+
+
+    # 문제 CSV 파일에 정답을 넣는 함수
+    def add_answers_to_csv(self, csv_file, answers_dict, output_file):
+        # CSV 파일 읽기
+        df = pd.read_csv(csv_file)
+        
+        # 각 문제에 대해 정답을 채워넣기
+        for index, row in df.iterrows():
+            # id에서 문제 번호 추출
+            problem_number = row['id'].split('-')[-1]  # id에서 'generation-for-nlp-military-년도-korean-1'에서 1 추출
+            
+            # 문제 번호에 해당하는 정답을 answers_dict에서 찾아서 'answer' 열에 추가
+            if problem_number in answers_dict:
+                print(problem_number, '번 정답:')
+                problem_data = ast.literal_eval(row['problems'])
+                problem_data['answer'] = answers_dict[problem_number]
+                print(problem_data['answer'])
+                df.at[index, 'problems'] = str(problem_data)
+        
+        # 수정된 DataFrame을 새로운 CSV 파일로 저장
+        df.to_csv(output_file, index=False)
+        print(f"정답이 추가된 CSV 파일이 '{output_file}'로 저장되었습니다.")
+
+
+# 3. CSVMerger Class
+class MilitaryKoreanCSVMerger:
+    def __init__(self, input_folder, output_file):
+        self.input_folder = input_folder
+        self.output_file = output_file
+
+    def merge_csv_files(self):
+        # 모든 CSV 파일의 경로를 가져옵니다.
+        files = [f for f in os.listdir(self.input_folder) if f.endswith('.csv')]
+        
+        # 파일들을 읽어 DataFrame 목록에 저장합니다.
+        df_list = []
+        for file in files:
+            file_path = os.path.join(self.input_folder, file)
+            df = pd.read_csv(file_path)
+            df_list.append(df)
+        
+        # 모든 DataFrame을 병합합니다.
+        merged_df = pd.concat(df_list, ignore_index=True)
+        # 병합된 DataFrame을 새로운 CSV 파일로 저장합니다.
+        merged_df.to_csv(self.output_file, index=False)
+        print(f"CSV 파일들이 병합되어 '{self.output_file}'로 저장되었습니다.")
+
+
+
 def main():
+    # MilitaryKoreanDataExtractor - PDF to CSV
     input_pdf_path = '/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/data/military_2025_korean.pdf' # 원본 pdf 파일 경로
     output_csv_path = '/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/data/military_2025_korean.csv' # output CSV 파일 경로
-    
     extractor = MilitaryKoreanDataExtractor(input_pdf_path)
     extractor.extract_text()
     extractor.extract_and_save_to_csv(output_csv_path)
 
+    # MilitaryKoreanAnswerExtractor - Answer Extraction and CSV update
+    input_pdf_path_answers = '/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/data/military/military_2025_answer.pdf' # 정답지 pdf 파일
+    input_csv_path = '/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/data/military_2025_korean.csv' # 문제지에서 추출한 데이터 CSV 파일
+    output_file = '/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/data/military_2025_korean_output.csv' # output CSV 파일
+    answer_extractor = MilitaryKoreanAnswerExtractor(input_pdf_path_answers)
+    answer_extractor.extract_text()
+    answers_dict = answer_extractor.extract_answers()
+    answer_extractor.add_answers_to_csv(input_csv_path, answers_dict, output_file)
+
+    # MilitaryKoreanCSVMerger - Merge all CSV files
+    input_folder = '/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/data/military'
+    output_file = '/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/data/military/military_2025-2014_korean.csv'
+    merger = MilitaryKoreanCSVMerger(input_folder, output_file)
+    merger.merge_csv_files()
 
 if __name__ == "__main__":
     main()
