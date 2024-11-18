@@ -137,6 +137,68 @@ def correct_spacing_in_csv(test_subject_kor):
     print(f"교정된 CSV 파일이 {output_file}에 저장되었습니다.")
 
 
+# 정답 데이터를 업데이트하는 함수
+def update_answers(subject_csv_path, answer_files, subject_name, output_csv):
+    """
+    각 연도의 답지 파일에서 특정 과목의 정답을 추출하고 문제 파일의 'problems' 컬럼에 정답을 업데이트합니다.
+    """
+    try:
+        df = pd.read_csv(subject_csv_path, encoding="utf-8")
+    except Exception as e:
+        print(f"Error reading subject CSV file: {e}")
+        return
+
+    for year, answer_pdf_path in answer_files.items():
+        try:
+            reader = PdfReader(answer_pdf_path)
+            text = "".join(page.extract_text() for page in reader.pages)
+
+            # 2019년 특정 과목에서 책형 '나' 처리
+            if year == "2019" and subject_name in ["국어", "한국사", "경제학개론"]:
+                pattern = re.compile(rf"{subject_name}.*?나\s+([\d\s]+)", re.DOTALL)
+            else:
+                # 기본 정답 추출
+                pattern = re.compile(rf"{subject_name}.*?\d+\s+([1-4\s]+)", re.DOTALL)
+
+            match = pattern.search(text)
+            if not match:
+                print(f"Answers not found for {subject_name} in year {year}")
+                continue
+
+            answers = list(map(int, match.group(1).split()))
+            if len(answers) != 20:
+                print(
+                    f"Unexpected number of answers for {subject_name} in year {year}: {len(answers)}"
+                )
+                continue
+
+            # 연도별 데이터 시작 인덱스 계산
+            start_index = sum(20 for y in answer_files.keys() if int(y) < int(year))
+            for i in range(20):
+                row_index = start_index + i
+                if row_index >= len(df):
+                    print(f"Row index {row_index} out of range for {year}")
+                    break
+                try:
+                    # 정답 데이터를 업데이트
+                    problems_dict = ast.literal_eval(df.at[row_index, "problems"])
+                    problems_dict["answer"] = answers[i]
+                    df.at[row_index, "problems"] = str(problems_dict)
+                except Exception as e:
+                    print(f"Error updating row {row_index} for year {year}: {e}")
+                    continue
+
+        except Exception as e:
+            print(f"Error processing year {year} for {subject_name}: {e}")
+
+    # 업데이트된 데이터 저장
+    try:
+        df.to_csv(output_csv, index=False, encoding="utf-8")
+        print(f"Updated subject CSV saved to: {output_csv}")
+    except Exception as e:
+        print(f"Error saving updated subject CSV: {e}")
+
+
 # 메인 실행 함수
 def main():
     load_dotenv()
@@ -156,6 +218,28 @@ def main():
         extract_text(subject["kor"], subject["eng"], years)
         # 추출된 문제 데이터 띄어쓰기 교정
         correct_spacing_in_csv(subject["kor"])
+
+    # 답지 경로 딕셔너리 정의
+    answer_files = {
+        "2019": os.path.join(os.getenv("ROOT_DIR"), "answer/9급공채_2019_답지.pdf"),
+        "2020": os.path.join(os.getenv("ROOT_DIR"), "answer/9급공채_2020_답지.pdf"),
+        "2021": os.path.join(os.getenv("ROOT_DIR"), "answer/9급공채_2021_답지.pdf"),
+        "2023": os.path.join(os.getenv("ROOT_DIR"), "answer/9급공채_2023_답지.pdf"),
+        "2024": os.path.join(os.getenv("ROOT_DIR"), "answer/9급공채_2024_답지.pdf"),
+    }
+
+    for subject in subjects:
+        # 과목별 문제 파일 경로 불러오기
+        input_csv = os.path.join(
+            os.getenv("ROOT_DIR"),
+            f"grade9-exam-data/9급공채_{subject['kor']}_clean.csv",
+        )
+        output_csv = os.path.join(
+            os.getenv("ROOT_DIR"),
+            f"grade9-exam-data/9급공채_{subject['kor']}_updated.csv",
+        )
+        # 띄어쓰기 교정한 문제 파일에 답 추가
+        update_answers(input_csv, answer_files, subject["kor"], output_csv)
 
 
 if __name__ == "__main__":
