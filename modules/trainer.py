@@ -14,9 +14,9 @@ class KsatTrainer:
     def __init__(self, model_module, data_module, config):
         self.config = config
         self.data_module = data_module
-        self.run_name = f"{config.model_name.replace('/', '-')}_{config.trainer_type}_lr={config.training_params.learning_rate}_bz={config.training_params.batch_size}"
         self.best_accuracy = 0
         self.best_predictions = None
+        self.run_name = f"{config.model_name.replace('/', '-')}_{config.trainer_type}_acc={self.best_accuracy}_lr={config.training_params.learning_rate}_bz={config.training_params.batch_size}"
         self.trainer = self._get_trainer(model_module, data_module, config)
 
     def _get_trainer(self, model_module, data_module, config):
@@ -29,7 +29,16 @@ class KsatTrainer:
                 model_module.tokenizer.vocab["4"],
                 model_module.tokenizer.vocab["5"],
             ]
-            logits = logits[:, -2, logit_idx]  # -2: answer token, -1: eos token
+            # 각 시퀀스의 정답 숫자 위치 (response_template 이후 토큰 위치) 찾기
+            answer_indices = torch.tensor(
+                [
+                    (label != -100).nonzero(as_tuple=True)[0][0].item()
+                    for label in labels
+                ]
+            )
+            logits = logits[np.arange(len(answer_indices)), answer_indices - 1][
+                :, logit_idx
+            ]  # [example 수, vocab size]
             return logits
 
         def compute_metrics(evaluation_result):
@@ -40,12 +49,21 @@ class KsatTrainer:
             logits, labels = evaluation_result
 
             # 토큰화된 레이블 디코딩
+            logit_idx = [
+                model_module.tokenizer.vocab["1"],
+                model_module.tokenizer.vocab["2"],
+                model_module.tokenizer.vocab["3"],
+                model_module.tokenizer.vocab["4"],
+                model_module.tokenizer.vocab["5"],
+            ]
+
             labels = np.where(
                 labels != -100, labels, model_module.tokenizer.pad_token_id
             )
             labels = model_module.tokenizer.batch_decode(
                 labels, skip_special_tokens=True
             )
+
             # 정답 숫자만 추출
             labels = list(map(lambda x: x.strip()[0], labels))
             # 0~4로 인덱싱
