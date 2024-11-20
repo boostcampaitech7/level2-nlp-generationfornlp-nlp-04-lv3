@@ -113,21 +113,26 @@ class ClaudeApi:
 
 
 if __name__ == "__main__":
+    # 1. env 파일 불러오기
     load_dotenv()
 
+    # 2. MessageBuilder 인스턴스 생성 - 인자로 claude 설정
     message_builder = MessageBuilder("claude")
 
+    # 3. csv파일을 Claude API Message 형식에 맞게 변환
     id_list, message_list = message_builder.create_message_list(
         file_path="/data/ephemeral/home/ms/level2-nlp-generationfornlp-nlp-04-lv3/data/default/train.csv",
     )
 
+    # 4. system message 설정
     system_message = "아래 질문의 정답이 지문 안에 있는지에 대한 여부를 알려주세요. 있으면 1 없으면 0을 출력해주세요."
 
+    # 5. ClaudeApi 인스턴스 생성 - 인자로 api_key, system_message 설정
     claude_api = ClaudeApi(
         api_key=os.getenv("CLAUDE_API_KEY"), system_message=system_message
     )
 
-    # 전체 데이터를 4개씩 나누어 배치 처리
+    # 6. 배치 방식으로 api 호출
     claude_api.call_batch(
         id_list=id_list,
         message_list=message_list,
