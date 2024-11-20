@@ -7,3 +7,12 @@ checkpoints/
 predictions/
 *.jsonl
 *.csv
+new_data/
+new_json_data/
+political/
+psychology/
+test*.py
+compute_accuracy.py
+answer/
+economy/
+grade7-exam-data/

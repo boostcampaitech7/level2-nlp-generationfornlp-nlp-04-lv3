@@ -1,41 +1,34 @@
 import json
 import time
-from datetime import datetime
 import pytz
-from pydantic import BaseModel
+from tqdm import tqdm
+from datetime import datetime
 from openai import OpenAI
 from openai.lib._pydantic import to_strict_json_schema
-from message_builder import MessageBuilder
+
+from api.base import BaseApi, MODEL_COSTS
 
 
-MODEL_COSTS = {"gpt-4o-mini": [0.150 / 1000000, 0.600 / 1000000]}
-
-
-class IsExist(BaseModel):
-    is_exist: int
-
-
-class OpenAIApi:
+class OpenAIApi(BaseApi):
 
     def __init__(self, api_key, model_name="gpt-4o-mini"):
-        self.model_name = model_name
-        self.client = OpenAI(api_key=api_key)
+        super().__init__(api_key, model_name)
+        self.client = OpenAI(api_key=self.api_key)
 
     def test(self, message):
         response = self.client.beta.chat.completions.parse(
             model=self.model_name,
             messages=message,
             temperature=0,
-            response_format=IsExist,
         )
         return response
 
     def create_batch_file(
         self,
         message_list,
+        batch_file,
         id_list=None,
-        file_name="batch",
-        structured_output_class=None,
+        structured_output=None,
     ):
 
         if id_list is None:
@@ -56,15 +49,13 @@ class OpenAIApi:
                     "frequency_penalty": 0,
                     "presence_penalty": 0,
                     "stop": None,
-                    #'logprobs': True,
-                    #'top_logprobs': 10,
                     "n": 1,
                 },
             }
             # Structured Output 사용
-            if structured_output_class:
-                schema = to_strict_json_schema(structured_output_class)
-                schema_name = structured_output_class.__name__
+            if structured_output:
+                schema = to_strict_json_schema(structured_output)
+                schema_name = structured_output.__name__
                 schema["type"] = "object"
                 response_format = {
                     "type": "json_schema",
@@ -78,16 +69,40 @@ class OpenAIApi:
 
             request_list.append(request)
 
-        with open(f"{file_name}.jsonl", "w") as file:
+        with open(f"{batch_file}.jsonl", "w") as file:
             for request in request_list:
                 file.write(json.dumps(request, ensure_ascii=False) + "\n")
 
-    def call_batch(self, input_file):
+        return f"{batch_file}.jsonl"
 
-        output_file = f"{input_file.split('.')[0]}_output.jsonl"
+    def call(self, batch_file):
+
+        output_file = f"{batch_file.split('.')[0]}_output.jsonl"
+
+        # 1. 배치 파일 열기
+        with open(batch_file, "r", encoding="utf-8") as file:
+            request_list = [json.loads(line) for line in file]
+
+        # 2. API 호출
+        response_list = []
+        for request in tqdm(request_list, desc="running...", total=len(request_list)):
+            response = self.test(request["body"]["messages"])
+            response.id = request["custom_id"]
+            response_list.append(response)
+
+        # 3. 파일로 저장
+        with open(output_file, "w", encoding="utf-8") as file:
+            for response in response_list:
+                file.write(
+                    json.dumps(response.to_dict(), ensure_ascii=False, indent=4) + "\n"
+                )
+
+    def call_batch(self, batch_file):
+
+        output_file = f"{batch_file.split('.')[0]}_output.jsonl"
         # 1. 배치 입력 파일 업로드
         batch_input_file = self.client.files.create(
-            file=open(input_file, "rb"), purpose="batch"
+            file=open(batch_file, "rb"), purpose="batch"
         )
 
         # 2. 배치 작업 생성
@@ -112,10 +127,23 @@ class OpenAIApi:
                 with open(output_file, "w", encoding="utf-8") as file:
                     file.write(result)
                 print("배치 작업이 성공적으로 완료되었습니다.")
+
+                # 3.1.1. 비용 계산
                 self.calulcate_cost(output_file)
+
+                # 3.1.2. 유니코드 -> 한글 전환
+                data = []
+                with open(output_file, "r", encoding="utf-8") as file:
+                    for line in file:
+                        data.append(json.loads(line.strip()))
+                with open(output_file, "w", encoding="utf-8") as file:
+                    for item in data:
+                        file.write(
+                            json.dumps(item, ensure_ascii=False, indent=4) + "\n"
+                        )
                 break
 
-            #           # 3.2. 작업 실패 혹은 오류 발생 시 경고문 출력 후 종료
+            # 3.2. 작업 실패 혹은 오류 발생 시 경고문 출력 후 종료
             elif batch_status in ["failed", "expired", "canceling", "cancelled"]:
                 print("배치 작업에서 오류가 발생했습니다!!!")
                 break
@@ -144,30 +172,20 @@ class OpenAIApi:
         print(f"API 비용: ${total_cost:.5f}")
 
 
-if __name__ == "__main__":
-    message_builder = MessageBuilder()
-    # "배경지식 없이 오직 지문을 독해해서 질문을 풀 수 있다면 1 없다면 0을 출력해주세요."
-    #
-    # "아래 주어진 지문 안에서 문제에 대한 정답이 있다면 1 없다면 0을 출력해주세요."
-    id_list, message_list = message_builder.create_message_list(
-        system_message="아래 질문의 정답이 지문 안에 있는지에 대한 여부 알려주세요. 있으면 1 없으면 0을 출력해주세요.",
-        file_path="/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/data/train.csv",
-    )
+def retrieve_batch(output_file, batch_id):
+    client = OpenAI()
+    output_file_id = client.batches.retrieve(batch_id).output_file_id
 
-    openai_api = OpenAIApi(
-        api_key="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"
-    )
-    openai_api.create_batch_file(
-        id_list=id_list[:4],
-        message_list=message_list[:4],
-        structured_output_class=IsExist,
-    )
-    openai_api.call_batch(
-        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/batch.jsonl"
-    )
-    """
-    idx = id_list.index("generation-for-nlp-2024")
-    response = openai_api.test(message_list[1])
-    print(message_list[1])
-    print(response.choices[0].message.parsed.is_exist)
-    """
+    result = client.files.content(output_file_id).content.decode("utf-8")
+    with open(output_file, "w", encoding="utf-8") as file:
+        file.write(result)
+    print("배치 작업이 성공적으로 완료되었습니다.")
+
+    # 3.1.2. 유니코드 -> 한글 전환
+    data = []
+    with open(output_file, "r", encoding="utf-8") as file:
+        for line in file:
+            data.append(json.loads(line.strip()))
+    with open(output_file, "w", encoding="utf-8") as file:
+        for item in data:
+            file.write(json.dumps(item, ensure_ascii=False, indent=4) + "\n")
