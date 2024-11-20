@@ -71,11 +71,11 @@ class ClaudeApi:
     def call_batch(
         self, id_list, message_list, output_file="batch_output.jsonl", batch_size=4
     ):
-        results = []
         for batch_ids, batch_messages in zip(
             chunked_iterable(id_list, batch_size),
             chunked_iterable(message_list, batch_size),
         ):
+            results = []
             with ThreadPoolExecutor() as executor:
                 futures = [
                     executor.submit(self.process_message, message, id)
