@@ -16,7 +16,7 @@ class KsatTrainer:
         self.data_module = data_module
         self.best_accuracy = 0
         self.best_predictions = None
-        self.run_name = f"{config.model_name.replace('/', '-')}_{config.trainer_type}_lr={config.training_params.learning_rate}_bz={config.training_params.batch_size}"
+        self.run_name = f"{config.model_name.replace('/', '-')}_{config.trainer_type}_data={config.data.dataset_name}_lr={config.training_params.learning_rate}_bz={config.training_params.batch_size}"
         self.trainer = self._get_trainer(model_module, data_module, config)
 
     def _get_trainer(self, model_module, data_module, config):
