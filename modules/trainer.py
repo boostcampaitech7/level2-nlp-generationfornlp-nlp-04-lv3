@@ -16,7 +16,7 @@ class KsatTrainer:
         self.data_module = data_module
         self.best_accuracy = 0
         self.best_predictions = None
-        self.run_name = f"{config.model_name.replace('/', '-')}_{config.trainer_type}_acc={self.best_accuracy}_lr={config.training_params.learning_rate}_bz={config.training_params.batch_size}"
+        self.run_name = f"{config.model_name.replace('/', '-')}_{config.trainer_type}_lr={config.training_params.learning_rate}_bz={config.training_params.batch_size}"
         self.trainer = self._get_trainer(model_module, data_module, config)
 
     def _get_trainer(self, model_module, data_module, config):
@@ -149,6 +149,13 @@ class KsatTrainer:
 
         self._save_config()
         self._save_best_eval_predictions()
+
+        output_dir = os.path.join(os.getenv("ROOT_DIR"), f"checkpoints/{self.run_name}")
+        output_dir_with_acc = os.path.join(
+            os.getenv("ROOT_DIR"),
+            f"checkpoints/{self.run_name}_acc={self.best_accuracy:.04f}",
+        )
+        os.rename(output_dir, output_dir_with_acc)
 
     def _save_config(self):
         output_dir = os.path.join(os.getenv("ROOT_DIR"), f"checkpoints/{self.run_name}")
