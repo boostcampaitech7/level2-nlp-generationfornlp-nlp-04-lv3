@@ -48,15 +48,6 @@ class KsatTrainer:
             int_output_map = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4}
             logits, labels = evaluation_result
 
-            # 토큰화된 레이블 디코딩
-            logit_idx = [
-                model_module.tokenizer.vocab["1"],
-                model_module.tokenizer.vocab["2"],
-                model_module.tokenizer.vocab["3"],
-                model_module.tokenizer.vocab["4"],
-                model_module.tokenizer.vocab["5"],
-            ]
-
             labels = np.where(
                 labels != -100, labels, model_module.tokenizer.pad_token_id
             )
