@@ -3,47 +3,59 @@
 
 
 def simple_prompt(example):
-    PROMPT_NO_QUESTION_PLUS = """지문:
+    PROMPT = ""
+    if example["paragraph"]:
+        PROMPT += """
+            지문:
             {paragraph}
-
-            질문:
-            {question}
-
-            선택지:
-            {choices}
-
-            1, 2, 3, 4, 5 중에 하나를 정답으로 고르세요.
-            정답:"""
-
-    PROMPT_QUESTION_PLUS = """지문:
-            {paragraph}
-
-            질문:
-            {question}
-
+            """
+    PROMPT += """
+        질문:
+        {question}
+        """
+    if example["question_plus"]:
+        PROMPT += """
             <보기>:
             {question_plus}
-
-            선택지:
-            {choices}
-
+            """
+    PROMPT += """
+        선택지:
+        {choices}
+        """
+    if len(example["choices"]) == 4:
+        PROMPT += """
+            1, 2, 3, 4 중에 하나를 정답으로 고르세요.
+            """
+    else:
+        PROMPT += """
             1, 2, 3, 4, 5 중에 하나를 정답으로 고르세요.
-            정답:"""
+            """
 
     choices_string = "\n".join(
         [f"{idx + 1} - {choice}" for idx, choice in enumerate(example["choices"])]
     )
     len_choices = len(example["choices"])
-    if example["question_plus"]:
-        user_message = PROMPT_QUESTION_PLUS.format(
+    if example["paragraph"] and example["question_plus"]:
+        user_message = PROMPT.format(
             paragraph=example["paragraph"],
             question=example["question"],
             question_plus=example["question_plus"],
             choices=choices_string,
         )
-    else:
-        user_message = PROMPT_NO_QUESTION_PLUS.format(
+    elif example["question_plus"]:
+        user_message = PROMPT.format(
+            question=example["question"],
+            question_plus=example["question_plus"],
+            choices=choices_string,
+        )
+    elif example["paragraph"]:
+        user_message = PROMPT.format(
             paragraph=example["paragraph"],
+            question=example["question"],
+            choices=choices_string,
+        )
+    else:
+        user_message = PROMPT.format(
             question=example["question"],
             choices=choices_string,
         )
