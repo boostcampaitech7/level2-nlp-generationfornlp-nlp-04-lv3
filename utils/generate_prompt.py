@@ -25,10 +25,14 @@ def simple_prompt(example):
     if len(example["choices"]) == 4:
         PROMPT += """
             1, 2, 3, 4 중에 하나를 정답으로 고르세요.
+
+            정답:
             """
     else:
         PROMPT += """
             1, 2, 3, 4, 5 중에 하나를 정답으로 고르세요.
+
+            정답:
             """
 
     choices_string = "\n".join(
