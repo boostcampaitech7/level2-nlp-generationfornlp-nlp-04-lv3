@@ -25,6 +25,7 @@ def main():
 
     # 1. model, tokenizer 세팅
     model_module = KsatModel(checkpoint_path, use_checkpoint=True)
+
     model_module.setup()
 
     # 2. data module 세팅
@@ -40,6 +41,7 @@ def main():
     pred_choices_map = {0: "1", 1: "2", 2: "3", 3: "4", 4: "5"}
 
     vocab = model_module.tokenizer.vocab
+    model_module.model.cuda()
     model_module.model.eval()
     with torch.inference_mode():
         for data in tqdm(test_prompt_dataset):
