@@ -1,6 +1,6 @@
-model_name: jungyuko/DAVinCI-42dot_LLM-PLM-1.3B-v1.1
+model_name: beomi/gemma-ko-2b
 data:
-  dataset_name: clean
+  dataset_name: extract
   module_name: KSATDataModule
   preprocessing_num_workers: 4
   max_seq_length: 1024

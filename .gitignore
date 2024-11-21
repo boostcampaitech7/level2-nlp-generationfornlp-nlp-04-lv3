@@ -7,3 +7,5 @@ checkpoints/
 predictions/
 *.jsonl
 *.csv
+job_queue.txt
+job_worker.log
