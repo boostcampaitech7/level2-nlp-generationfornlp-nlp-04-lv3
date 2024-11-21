@@ -1,10 +1,32 @@
 #!/bin/bash
 
 SESSION_NAME="job_manager"
-QUEUE_FILE="/data/ephemeral/home/level2-nlp-datacentric-nlp-11/job_queue.txt"
-ENQUEUE_SCRIPT="/data/ephemeral/home/level2-nlp-datacentric-nlp-11/utils/enqueue.sh"
-WORKER_LOG="/data/ephemeral/home/level2-nlp-datacentric-nlp-11/job_worker.log"
+ENV_FILE="/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/.env"
+
+# .env 파일 로드
+if [ -f "$ENV_FILE" ]; then
+    source "$ENV_FILE"
+else
+    echo ".env 파일을 찾을 수 없습니다: $ENV_FILE"
+    exit 1
+fi
+
+# ROOT_DIR 기반으로 경로 설정
+QUEUE_FILE="$ROOT_DIR/job_queue.txt"
+ENQUEUE_SCRIPT="$ROOT_DIR/utils/enqueue.sh"
+WORKER_LOG="$ROOT_DIR/job_worker.log"
+
 source ~/.bashrc
+
+# 파일이 없으면 생성
+if [ ! -f "$QUEUE_FILE" ]; then
+    echo "Initializing job queue..." > "$QUEUE_FILE"
+fi
+
+if [ ! -f "$WORKER_LOG" ]; then
+    echo "Initializing worker log..." > "$WORKER_LOG"
+fi
+
 # tmux 세션이 이미 존재하는지 확인
 tmux has-session -t "$SESSION_NAME" 2>/dev/null
 

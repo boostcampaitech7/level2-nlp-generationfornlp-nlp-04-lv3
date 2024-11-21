@@ -1,6 +1,16 @@
 #!/bin/bash
 
-QUEUE_FILE="/data/ephemeral/home/level2-nlp-datacentric-nlp-11/job_queue.txt"
+ENV_FILE="/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/.env"
+
+# .env 파일 로드
+if [ -f "$ENV_FILE" ]; then
+    source "$ENV_FILE"
+else
+    echo ".env 파일을 찾을 수 없습니다: $ENV_FILE"
+    exit 1
+fi
+
+QUEUE_FILE="$ROOT_DIR/job_queue.txt"
 clear
 while true; do
     echo "추가할 작업 명령어를 입력하세요 (종료하려면 'exit' 입력):"
