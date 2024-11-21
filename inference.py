@@ -46,7 +46,7 @@ def main(inference_mode, model_name, use_checkpoint):
         data_module.setup("test")
         test_prompt_dataset = data_module.get_prompt_dataset(data_module.test_dataset)
     else:
-        data_module.setup("validation")
+        data_module.setup("train")
         test_prompt_dataset = data_module.get_prompt_dataset(
             data_module.eval_dataset.remove_columns(["answer"])
         )
@@ -82,7 +82,8 @@ def main(inference_mode, model_name, use_checkpoint):
 
     # 5. predictions 저장
     output_path = os.path.join(
-        ROOT_DIR, f"predictions/{model_name}_{inference_mode}_predictions.csv"
+        ROOT_DIR,
+        f"predictions/{model_name.replace('/', '-')}_{inference_mode}_predictions.csv",
     )
     pd.DataFrame(infer_results).to_csv(output_path, index=False)
 

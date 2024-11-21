@@ -68,13 +68,12 @@ def simple_prompt(example):
         {"role": "system", "content": "지문을 읽고 질문의 답을 구하세요."},
         {"role": "user", "content": user_message.strip()},
     ]
-    if example["answer"]:
+    if "answer" in example.keys():
         messages.append({"role": "assistant", "content": f"{example['answer']}"})
 
     chat_message = {
         "id": example["id"],
         "messages": messages,
-        "label": example["answer"],
         "len_choices": len_choices,
     }
     return chat_message
