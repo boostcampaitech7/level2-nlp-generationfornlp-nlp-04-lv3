@@ -75,117 +75,64 @@ class OpenAIApi(BaseApi):
 
         return f"{batch_file}.jsonl"
 
-    def call(self, batch_file):
-
-        output_file = f"{batch_file.split('.')[0]}_output.jsonl"
+    def call(self, batch_file, batch_size=100):
 
         # 1. 배치 파일 열기
         with open(batch_file, "r", encoding="utf-8") as file:
             request_list = [json.loads(line) for line in file]
 
         # 2. API 호출
-        response_list = []
-        for request in tqdm(request_list, desc="running...", total=len(request_list)):
+        batch_idx, response_list = 0, []
+        for idx, request in tqdm(
+            enumerate(request_list), desc="running...", total=len(request_list)
+        ):
             response = self.test(request["body"]["messages"])
             response.id = request["custom_id"]
             response_list.append(response)
 
-        # 3. 파일로 저장
-        with open(output_file, "w", encoding="utf-8") as file:
-            for response in response_list:
-                file.write(
-                    json.dumps(response.to_dict(), ensure_ascii=False, indent=4) + "\n"
-                )
-
-    def call_batch(self, batch_file):
-
-        output_file = f"{batch_file.split('.')[0]}_output.jsonl"
-        # 1. 배치 입력 파일 업로드
-        batch_input_file = self.client.files.create(
-            file=open(batch_file, "rb"), purpose="batch"
-        )
-
-        # 2. 배치 작업 생성
-        batch_job = self.client.batches.create(
-            input_file_id=batch_input_file.id,
-            endpoint="/v1/chat/completions",
-            completion_window="24h",
-        )
-
-        # 3. 배치 작업 상태 확인
-        while True:
-            batch_status = self.client.batches.retrieve(batch_job.id).status
-            # 3.1. 작업 완료 시 결과 파일에 저장
-            if batch_status == "completed":
-                output_file_id = self.client.batches.retrieve(
-                    batch_job.id
-                ).output_file_id
-
-                result = self.client.files.content(output_file_id).content.decode(
-                    "utf-8"
-                )
-                with open(output_file, "w", encoding="utf-8") as file:
-                    file.write(result)
-                print("배치 작업이 성공적으로 완료되었습니다.")
-
-                # 3.1.1. 비용 계산
-                self.calulcate_cost(output_file)
-
-                # 3.1.2. 유니코드 -> 한글 전환
-                data = []
-                with open(output_file, "r", encoding="utf-8") as file:
-                    for line in file:
-                        data.append(json.loads(line.strip()))
-                with open(output_file, "w", encoding="utf-8") as file:
-                    for item in data:
+            # 3. 배치 크기만큼 저장되면 파일로 저장
+            if batch_size == len(response_list) or idx + 1 == len(request_list):
+                sub_batch_file = f"{batch_file.split('.')[0]}_{batch_idx}.jsonl"
+                with open(sub_batch_file, "w", encoding="utf-8") as file:
+                    for response in response_list:
                         file.write(
-                            json.dumps(item, ensure_ascii=False, indent=4) + "\n"
+                            json.dumps(response.to_dict(), ensure_ascii=False, indent=4)
+                            + "\n"
                         )
-                break
+                response_list = []
+                batch_idx += 1
 
-            # 3.2. 작업 실패 혹은 오류 발생 시 경고문 출력 후 종료
-            elif batch_status in ["failed", "expired", "canceling", "cancelled"]:
-                print("배치 작업에서 오류가 발생했습니다!!!")
-                break
+    def call_batch(self, batch_file, batch_size=100):
 
-            # 3.3. 작업 진행 중이면 10초 후 재확인
-            else:
-                print(f"현재 배치 작업 상태: {batch_status}")
-                seoul_time = datetime.now(pytz.timezone("Asia/Seoul"))
-                print("현재 시각:", seoul_time.strftime("%Y-%m-%d %H:%M:%S"))
-                time.sleep(10)  # 10초 지연 후 상태 재확인
-
-    def calulcate_cost(self, output_file):
-        total_cost = 0
-        with open(output_file, "r") as file:
+        # 1. 배치 크기로 데이터 나누고 파일로 저장
+        data = []
+        with open(batch_file, "r", encoding="utf-8") as file:
             for line in file:
-                row = json.loads(line.strip())
-                input_cost = (
-                    MODEL_COSTS[self.model_name][0]
-                    * row["response"]["body"]["usage"]["prompt_tokens"]
-                )
-                output_cost = (
-                    MODEL_COSTS[self.model_name][1]
-                    * row["response"]["body"]["usage"]["completion_tokens"]
-                )
-                total_cost += input_cost + output_cost
-        print(f"API 비용: ${total_cost:.5f}")
+                data.append(json.loads(line.strip()))
 
+        batch_idx = 1
+        sub_batch_file_list = []
+        for idx in range(0, len(data), batch_size):
+            sub_batch_file = f"{batch_file.split('.')[0]}_{batch_idx}.jsonl"
 
-def retrieve_batch(output_file, batch_id):
-    client = OpenAI()
-    output_file_id = client.batches.retrieve(batch_id).output_file_id
+            with open(sub_batch_file, "w", encoding="utf-8") as file:
+                for item in data[idx : idx + batch_size]:
+                    file.write(json.dumps(item, ensure_ascii=False) + "\n")
+            sub_batch_file_list.append(sub_batch_file)
+            batch_idx += 1
 
-    result = client.files.content(output_file_id).content.decode("utf-8")
-    with open(output_file, "w", encoding="utf-8") as file:
-        file.write(result)
-    print("배치 작업이 성공적으로 완료되었습니다.")
+        # 2. 배치 크기로 나눈 파일로 API 호출
+        for sub_batch_file in sub_batch_file_list:
 
-    # 3.1.2. 유니코드 -> 한글 전환
-    data = []
-    with open(output_file, "r", encoding="utf-8") as file:
-        for line in file:
-            data.append(json.loads(line.strip()))
-    with open(output_file, "w", encoding="utf-8") as file:
-        for item in data:
-            file.write(json.dumps(item, ensure_ascii=False, indent=4) + "\n")
+            # 2.1. 배치 입력 파일 업로드
+            batch_input_file = self.client.files.create(
+                file=open(sub_batch_file, "rb"), purpose="batch"
+            )
+
+            # 2.2. 배치 작업 생성
+            batch_job = self.client.batches.create(
+                input_file_id=batch_input_file.id,
+                endpoint="/v1/chat/completions",
+                completion_window="24h",
+            )
+            print(f"batch id: {batch_job.id}")

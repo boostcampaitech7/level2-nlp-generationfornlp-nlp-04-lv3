@@ -30,11 +30,28 @@ class SynDataGenerator:
         }
 
     def test(self, instruction, idx=0):
+        # 1. 프롬프트 생성
         id_list, prompt_list = self.prompt_builder.create_prompt_list(
             instruction, self.data_file
         )
+        # 2. API 호출
         response = self.api.test(prompt_list[idx])
         return response
+
+    def run(self, instruction, batch_file, batch_size=100, type="batch"):
+        # 1. 프롬프트 생성
+        id_list, prompt_list = self.prompt_builder.create_prompt_list(
+            instruction, self.data_file
+        )
+        # 2. 프롬프트 파일 생성
+        batch_file = self.api.create_batch_file(
+            id_list=id_list[:7], message_list=prompt_list[:3], batch_file=batch_file
+        )
+        # 3. API 호출
+        if type == "batch":
+            self.api.call_batch(batch_file, batch_size=batch_size)
+        else:
+            self.api.call(batch_file, batch_size=batch_size)
 
     def test_aug(self):
         return self.test(self.instructions["aug"])
@@ -45,38 +62,23 @@ class SynDataGenerator:
     def test_compare(self):
         return self.test(self.instructions["compare"])
 
-    def run(self, instruction, batch_file, type="batch"):
-        id_list, prompt_list = self.prompt_builder.create_prompt_list(
-            instruction, self.data_file
+    def augmentation(self, batch_size=100, type="batch"):
+        batch_file = (
+            f"{data_file.split('/')[-1].split('.')[0]}_{self.api_type}_aug_{type}"
         )
-        batch_file = self.api.create_batch_file(
-            id_list=id_list[:2], message_list=prompt_list[:2], batch_file=batch_file
-        )
-        if type == "batch":
-            self.api.call_batch(batch_file)
-        else:
-            self.api.call(batch_file)
+        self.run(self.instructions["aug"], batch_file, batch_size, type)
 
-    def augmentation(self, type="batch"):
-        self.run(
-            self.instructions["aug"],
-            f"{data_file.split('/')[-1].split('.')[0]}_{self.api_type}_aug_{type}",
-            type,
+    def cot(self, batch_size=100, type="batch"):
+        batch_file = (
+            f"{data_file.split('/')[-1].split('.')[0]}_{self.api_type}_cot_{type}"
         )
+        self.run(self.instructions["cot"], batch_file, batch_size, type)
 
-    def cot(self, type="batch"):
-        self.run(
-            self.instructions["cot"],
-            f"{data_file.split('/')[-1].split('.')[0]}_{self.api_type}_cot_{type}",
-            type,
+    def compare(self, batch_size=100, type="batch"):
+        batch_file = (
+            f"{data_file.split('/')[-1].split('.')[0]}_{self.api_type}_compare_{type}"
         )
-
-    def compare(self, type="batch"):
-        self.run(
-            self.instructions["compare"],
-            f"{data_file.split('/')[-1].split('.')[0]}_{self.api_type}_compare_{type}",
-            type,
-        )
+        self.run(self.instructions["compare"], batch_file, batch_size, type)
 
 
 if __name__ == "__main__":
@@ -126,4 +128,4 @@ if __name__ == "__main__":
         cot_instruction=solving_prompt,
     )
     # print(syn_data_gen.test_cot())
-    syn_data_gen.cot(type="not batch")
+    syn_data_gen.cot(type="batch", batch_size=2)

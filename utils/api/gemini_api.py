@@ -43,17 +43,17 @@ class GeminiApi(BaseApi):
 
         return f"{batch_file}.jsonl"
 
-    def call(self, batch_file):
-
-        output_file = f"{batch_file.split('.')[0]}_output.jsonl"
+    def call(self, batch_file, batch_size=100):
 
         # 1. 배치 파일 열기
         with open(batch_file, "r", encoding="utf-8") as file:
             request_list = [json.loads(line) for line in file]
 
         # 2. API 호출
-        response_list = []
-        for request in tqdm(request_list, desc="running...", total=len(request_list)):
+        batch_idx, response_list = 0, []
+        for idx, request in tqdm(
+            enumerate(request_list), desc="running...", total=len(request_list)
+        ):
             response = self.test(request["message"])
             response_list.append(
                 {
@@ -62,10 +62,16 @@ class GeminiApi(BaseApi):
                 }
             )
 
-        # 3. 파일로 저장
-        with open(output_file, "w", encoding="utf-8") as file:
-            for response in response_list:
-                file.write(json.dumps(response, ensure_ascii=False, indent=4) + "\n")
+            # 3. 배치 크기만큼 저장되면 파일로 저장
+            if batch_size == len(response_list) or idx + 1 == len(request_list):
+                sub_batch_file = f"{batch_file.split('.')[0]}_{batch_idx}.jsonl"
+                with open(sub_batch_file, "w", encoding="utf-8") as file:
+                    for response in response_list:
+                        file.write(
+                            json.dumps(response, ensure_ascii=False, indent=4) + "\n"
+                        )
+                response_list = []
+                batch_idx += 1
 
-    def call_batch(self, batch_file):
-        assert NotImplementedError
+    def call_batch(self, batch_file, batch_size=100):
+        raise NotImplementedError
