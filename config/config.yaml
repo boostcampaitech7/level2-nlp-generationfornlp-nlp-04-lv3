@@ -1,6 +1,6 @@
 model_name: beomi/gemma-ko-2b
 data:
-  dataset_name: extract
+  dataset_name: default
   module_name: KSATDataModule
   preprocessing_num_workers: 4
   max_seq_length: 1024
@@ -16,4 +16,4 @@ training_params:
   output_dir: outputs
   max_seq_length: 1024
 wandb:
-  project: test
+  project: GenerationNLP

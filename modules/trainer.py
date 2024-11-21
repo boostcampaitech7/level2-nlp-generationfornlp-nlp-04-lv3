@@ -134,11 +134,7 @@ class KsatTrainer:
         return trainer
 
     def train(self):
-        wandb.init(
-            project=self.config.wandb.project,
-            name=self.run_name,
-            entity="seven-eleven",
-        )
+        wandb.init(project=self.config.wandb.project, name=self.run_name)
         self.trainer.train()
         wandb.finish()
 
