@@ -18,3 +18,6 @@ compute_accuracy.py
 answer/
 economy/
 grade7-exam-data/
+*.pid
+.enqueue_history
+job_progress.txt
