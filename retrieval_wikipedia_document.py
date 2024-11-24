@@ -1,4 +1,5 @@
 import requests
+from langchain_community.retrievers import WikipediaRetriever
 
 
 # MediaWiki API 활용 타이틀 검색 함수
@@ -36,13 +37,20 @@ def search_title(title, language="ko"):
         return {"error": f"API request failed: {e}"}
 
 
+# Langchain Wikipedia Retriever 활용 키워드 검색 함수
+def search_keyword(keyword, language="ko", load_max_docs=3):
+    retriever = WikipediaRetriever(lang=language, load_max_docs=load_max_docs)
+
+    docs = retriever.invoke(keyword)
+    return docs
+
+
 if __name__ == "__main__":
     # 검색할 문서 타이틀
     search_term = "주식"
-    language = "ko"
 
     # 문서 반환
-    result = search_title(search_term, language)
+    result = search_title(search_term)
 
     if "error" in result:
         print(f"Error: {result['error']}")
@@ -51,3 +59,13 @@ if __name__ == "__main__":
         print(f"Page ID: {result['page_id']}")
         print(f"Content: {result['content']}")
         print(f"URL: {result['url']}")
+
+    # 검색할 키워드
+    keyword = "주식"
+
+    # 문서 반환
+    results = search_keyword(keyword)
+
+    for doc in results:
+        print(doc.metadata["title"])
+        print(doc.metadata["summary"])
