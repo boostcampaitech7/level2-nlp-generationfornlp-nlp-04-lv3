@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from utils.common import set_seed
 from modules.model import KsatModel
-from modules.trainer import KsatTrainer
+from modules.trainer import KsatTrainer, KsatCoTTrainer
 from modules.data_module import KsatDataModule
 
 
@@ -22,7 +22,10 @@ def main(config):
     data_module.setup("train")
 
     # 3. trainer 세팅
-    trainer_module = KsatTrainer(model_module, data_module, config)
+    if config.trainer_type == "SFT":
+        trainer_module = KsatTrainer(model_module, data_module, config)
+    elif config.trainer_type == "CoT":
+        trainer_module = KsatCoTTrainer(model_module, data_module, config)
 
     # 4. train
     trainer_module.train()
