@@ -39,33 +39,42 @@ def search_title(title, language="ko"):
 
 # Langchain Wikipedia Retriever 활용 키워드 검색 함수
 def search_keyword(keyword, language="ko", load_max_docs=3):
-    retriever = WikipediaRetriever(lang=language, load_max_docs=load_max_docs)
-
-    docs = retriever.invoke(keyword)
-    return docs
+    try:
+        retriever = WikipediaRetriever(lang=language, load_max_docs=load_max_docs)
+        docs = retriever.invoke(keyword)  # 검색 수행
+        if not docs:  # 결과가 비어 있을 경우
+            return {"error": f"No results found for keyword '{keyword}'"}
+        return docs
+    except Exception as e:  # 예외 처리
+        return {"error": f"An error occurred: {e}"}
 
 
 if __name__ == "__main__":
     # 검색할 문서 타이틀
-    search_term = "주식"
+    title = "커피"
 
     # 문서 반환
-    result = search_title(search_term)
+    result = search_title(title)
 
+    # 결과 출력
     if "error" in result:
         print(f"Error: {result['error']}")
     else:
-        print(f"Title: {result['title']}")
         print(f"Page ID: {result['page_id']}")
+        print(f"Title: {result['title']}")
         print(f"Content: {result['content']}")
-        print(f"URL: {result['url']}")
 
     # 검색할 키워드
     keyword = "주식"
 
     # 문서 반환
-    results = search_keyword(keyword)
+    result = search_keyword(keyword)
 
-    for doc in results:
-        print(doc.metadata["title"])
-        print(doc.metadata["summary"])
+    # 결과 출력
+    if isinstance(result, dict) and "error" in result:
+        print(f"Error: {result['error']}")
+    else:
+        for idx, doc in enumerate(result):
+            print(f"Document {idx + 1}:")
+            print(f"Title: {doc.metadata.get('title', 'No Title')}")
+            print(f"Content: {doc.page_content}\n")
