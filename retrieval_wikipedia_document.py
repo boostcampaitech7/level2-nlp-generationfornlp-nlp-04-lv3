@@ -9,6 +9,8 @@ def search_title(title, language="ko"):
         "action": "query",  # title 검색
         "titles": title,  # title 지정
         "prop": "extracts",  # 전체 텍스트
+        "prop": "pageprops|extracts",  # pageprops에서 설명 정보 가져옴
+        "exintro": True,  # 첫 번째 섹션만 가져오기
         "explaintext": True,  # 텍스트 형식으로 요청
         "inprop": "url",  # URL 정보 포함
         "format": "json",  # JSON 포맷으로 반환
@@ -27,11 +29,9 @@ def search_title(title, language="ko"):
             return {
                 "title": page_data.get("title", "Unknown"),
                 "page_id": page_id,
-                "content": page_data.get("extract", "No content available."),
-                "url": page_data.get(
-                    "fullurl",
-                    f"https://{language}.wikipedia.org/wiki/{title.replace(' ', '_')}",
-                ),
+                "summary": page_data.get(
+                    "extract", "No summary available."
+                ),  # 요약 가져오기
             }
     except requests.RequestException as e:
         return {"error": f"API request failed: {e}"}
@@ -70,13 +70,13 @@ def main(titles, language="ko", load_max_docs=3):
                 for i, doc in enumerate(keyword_result, start=1):
                     print(f"Document {i}:")
                     print(f"Title: {doc.metadata.get('title', 'No Title')}")
-                    print(f"Content: {doc.page_content}\n")
+                    print(f"Content: {doc.metadata.get('summary', 'No Summary')}\n")
         elif "error" in result:
             print(f"Error: {result['error']}")
         else:
             print(f"Page ID: {result['page_id']}")
             print(f"Title: {result['title']}")
-            print(f"Content: {result['content']}")
+            print(f"Content: {result['summary']}")
 
 
 if __name__ == "__main__":
