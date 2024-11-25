@@ -5,6 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
+import argparse
 
 from modules.model import KsatModel
 from modules.data_module import KsatDataModule
@@ -89,9 +90,30 @@ def main(inference_mode, model_name, use_checkpoint):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pairs", nargs="*")
+    args = parser.parse_args()
+    kwargs = {}
+    for pair in args.pairs:
+        key, value = pair.split("=")
+        if key == "use_checkpoint" and value == "False":
+            kwargs[key] = False
+        elif key == "use_checkpoint" and value == "True":
+            kwargs[key] = True
+        else:
+            kwargs[key] = value
+
     main(
-        inference_mode="test",  # validation
-        model_name="Bllossom/llama-3.2-Korean-Bllossom-3B",  # 사용할 checkpoint 폴더명 or 사전학습 모델명 입력
+        inference_mode=(
+            "test" if "mode" not in kwargs.keys() else kwargs["mode"]
+        ),  # validation
+        model_name=(
+            "beomi/gemma-ko-2b"
+            if "model_name" not in kwargs.keys()
+            else kwargs["model_name"]
+        ),  # 사용할 checkpoint 폴더명 or 사전학습 모델명 입력
         # checkpoint 사용하는 경우 use_checkpoint를 True로, 미학습 모델을 사용하는 경우 False로 설정해주세요.
-        use_checkpoint=False,
+        use_checkpoint=(
+            False if "use_checkpoint" not in kwargs.keys() else kwargs["use_checkpoint"]
+        ),
     )
