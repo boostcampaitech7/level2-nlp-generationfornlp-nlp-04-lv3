@@ -20,10 +20,10 @@ def search_title(title, language="ko"):
         data = response.json()
 
         # 결과 처리
-        pages = data.get("query", {}).get("pages", {})
+        pages = data.get("query", {}).get("pages", {})  # 검색 수행
         for page_id, page_data in pages.items():
             if page_id == "-1":  # 문서가 존재하지 않을 경우
-                return {"error": f"No article found for title '{title}'"}
+                return None
             return {
                 "title": page_data.get("title", "Unknown"),
                 "page_id": page_id,
@@ -49,32 +49,39 @@ def search_keyword(keyword, language="ko", load_max_docs=3):
         return {"error": f"An error occurred: {e}"}
 
 
+# 메인 retrieval 로직 함수
+def main(titles, language="ko", load_max_docs=3):
+    """
+    1. 입력받은 타이틀 리스트의 요소에 대해 타이틀 기반 문서 검색
+    2. 타이틀이 일치하는 문서가 없을 경우 키워드 검색으로 대체
+    """
+    for idx, title in enumerate(titles, start=1):
+        print(f"\n=== Processing Title {idx}/{len(titles)}: {title} ===")
+        result = search_title(title, language)
+
+        if result is None:
+            print(f"'{title}' 문서를 찾을 수 없습니다.")
+            keyword_result = search_keyword(title, language, load_max_docs)
+
+            if isinstance(keyword_result, dict) and "error" in keyword_result:
+                print(f"키워드 검색 실패: {keyword_result['error']}")
+            else:
+                print("키워드 검색 결과:")
+                for i, doc in enumerate(keyword_result, start=1):
+                    print(f"Document {i}:")
+                    print(f"Title: {doc.metadata.get('title', 'No Title')}")
+                    print(f"Content: {doc.page_content}\n")
+        elif "error" in result:
+            print(f"Error: {result['error']}")
+        else:
+            print(f"Page ID: {result['page_id']}")
+            print(f"Title: {result['title']}")
+            print(f"Content: {result['content']}")
+
+
 if __name__ == "__main__":
-    # 검색할 문서 타이틀
-    title = "커피"
+    # 검색할 타이틀 리스트
+    titles = ["커피", "주식", "비트코인"]
 
-    # 문서 반환
-    result = search_title(title)
-
-    # 결과 출력
-    if "error" in result:
-        print(f"Error: {result['error']}")
-    else:
-        print(f"Page ID: {result['page_id']}")
-        print(f"Title: {result['title']}")
-        print(f"Content: {result['content']}")
-
-    # 검색할 키워드
-    keyword = "주식"
-
-    # 문서 반환
-    result = search_keyword(keyword)
-
-    # 결과 출력
-    if isinstance(result, dict) and "error" in result:
-        print(f"Error: {result['error']}")
-    else:
-        for idx, doc in enumerate(result):
-            print(f"Document {idx + 1}:")
-            print(f"Title: {doc.metadata.get('title', 'No Title')}")
-            print(f"Content: {doc.page_content}\n")
+    # 메인 실행
+    main(titles)
