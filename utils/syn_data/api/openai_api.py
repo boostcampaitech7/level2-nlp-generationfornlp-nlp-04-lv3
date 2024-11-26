@@ -1,31 +1,38 @@
+import os
 import json
-import time
-import pytz
 from tqdm import tqdm
-from datetime import datetime
 from openai import OpenAI
 from openai.lib._pydantic import to_strict_json_schema
 
-from api.base import BaseApi, MODEL_COSTS
+from syn_data.api.base import BaseApi
 
 
 class OpenAIApi(BaseApi):
 
-    def __init__(self, api_key, model_name="gpt-4o-mini"):
-        super().__init__(api_key, model_name)
-        self.client = OpenAI(api_key=self.api_key)
+    def __init__(self, api_key):
+        super().__init__()
+        self.client = OpenAI(api_key=api_key)
 
-    def test(self, message):
+    def test(self, prompt, model_name, structured_output=None):
+
         response = self.client.beta.chat.completions.parse(
-            model=self.model_name,
-            messages=message,
+            model=model_name,
+            messages=prompt,
             temperature=0,
+            **({"response_format": structured_output} if structured_output else {}),
         )
-        return response
+        try:
+            response_data = json.loads(
+                response.choices[0].to_dict()["message"]["content"]
+            )
+        except:
+            response_data = response.choices[0].to_dict()["message"]["content"]
+        return response_data
 
     def create_batch_file(
         self,
         message_list,
+        model_name,
         batch_file,
         id_list=None,
         structured_output=None,
@@ -42,7 +49,7 @@ class OpenAIApi(BaseApi):
                 "method": "POST",
                 "url": "/v1/chat/completions",
                 "body": {
-                    "model": f"{self.model_name}",
+                    "model": f"{model_name}",
                     "messages": message,
                     "temperature": 0,
                     "top_p": 1,
@@ -69,11 +76,9 @@ class OpenAIApi(BaseApi):
 
             request_list.append(request)
 
-        with open(f"{batch_file}.jsonl", "w") as file:
+        with open(batch_file, "w") as file:
             for request in request_list:
                 file.write(json.dumps(request, ensure_ascii=False) + "\n")
-
-        return f"{batch_file}.jsonl"
 
     def call(self, batch_file, batch_size=100):
 
@@ -86,19 +91,21 @@ class OpenAIApi(BaseApi):
         for idx, request in tqdm(
             enumerate(request_list), desc="running...", total=len(request_list)
         ):
-            response = self.test(request["body"]["messages"])
-            response.id = request["custom_id"]
-            response_list.append(response)
+            response = self.test(
+                request["body"]["messages"],
+                request["body"]["model"],
+                request["body"].get("response_format", None),
+            )
 
+            response_list.append({"id": request["custom_id"], "response": response})
             # 3. 배치 크기만큼 저장되면 파일로 저장
             if batch_size == len(response_list) or idx + 1 == len(request_list):
-                sub_batch_file = f"{batch_file.split('.')[0]}_{batch_idx}.jsonl"
+                sub_batch_file = (
+                    f"{os.path.splitext(batch_file)[0]}_output{batch_idx}.jsonl"
+                )
                 with open(sub_batch_file, "w", encoding="utf-8") as file:
                     for response in response_list:
-                        file.write(
-                            json.dumps(response.to_dict(), ensure_ascii=False, indent=4)
-                            + "\n"
-                        )
+                        file.write(json.dumps(response, ensure_ascii=False) + "\n")
                 response_list = []
                 batch_idx += 1
 
@@ -113,8 +120,7 @@ class OpenAIApi(BaseApi):
         batch_idx = 1
         sub_batch_file_list = []
         for idx in range(0, len(data), batch_size):
-            sub_batch_file = f"{batch_file.split('.')[0]}_{batch_idx}.jsonl"
-
+            sub_batch_file = f"{os.path.splitext(batch_file)[0]}_{batch_idx}.jsonl"
             with open(sub_batch_file, "w", encoding="utf-8") as file:
                 for item in data[idx : idx + batch_size]:
                     file.write(json.dumps(item, ensure_ascii=False) + "\n")
@@ -122,6 +128,7 @@ class OpenAIApi(BaseApi):
             batch_idx += 1
 
         # 2. 배치 크기로 나눈 파일로 API 호출
+        batch_id_list = []
         for sub_batch_file in sub_batch_file_list:
 
             # 2.1. 배치 입력 파일 업로드
@@ -135,4 +142,41 @@ class OpenAIApi(BaseApi):
                 endpoint="/v1/chat/completions",
                 completion_window="24h",
             )
-            print(f"batch id: {batch_job.id}")
+            batch_id_list.append(batch_job.id)
+
+        for batch_id in batch_id_list:
+            print(f"batch id: {batch_id}")
+        return batch_id_list
+
+    def retrieve_batch(self, output_file, batch_id):
+        batch_status = self.client.batches.retrieve(batch_id).status
+
+        if batch_status != "completed":
+            return False
+
+        # API 결과 파일로 저장
+        output_file_id = self.client.batches.retrieve(batch_id).output_file_id
+        response_list = self.client.files.content(output_file_id).content.decode(
+            "utf-8"
+        )
+        with open(output_file, "w", encoding="utf-8") as file:
+            for response in response_list.splitlines():
+                response = json.loads(response)
+                try:
+                    response_data = json.loads(
+                        response["response"]["body"]["choices"][0]["message"]["content"]
+                    )
+                except:
+                    response_data = response["response"]["body"]["choices"][0][
+                        "message"
+                    ]["content"]
+                result = {
+                    "id": response["custom_id"],
+                    "response": (
+                        response_data
+                        if response["response"]["status_code"] == 200
+                        else None
+                    ),
+                }
+                file.write(json.dumps(result, ensure_ascii=False) + "\n")
+        return True

@@ -46,12 +46,3 @@ class SynDataGenPromptBuilder:
             prompt_list.append(prompt)
 
         return id_list, prompt_list
-
-
-if __name__ == "__main__":
-    message_builder = SynDataGenPromptBuilder()
-    id_list, message_list = message_builder.create_prompt_list(
-        instruction="아래 문제에서 사용된 개념으로 새로운 수능형 문제를 만들어주세요.",
-        data_file="/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/data/uniform/all.csv",
-    )
-    print(message_list[0][1]["content"])

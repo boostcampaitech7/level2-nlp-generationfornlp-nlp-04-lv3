@@ -2,13 +2,12 @@ import json
 from tqdm import tqdm
 from openai import OpenAI
 
-from api.base import BaseApi, MODEL_COSTS
 
-
-class GeminiApi(BaseApi):
+class GeminiApi:
 
     def __init__(self, api_key, model_name="gemini-1.5-flash"):
-        super().__init__(api_key, model_name)
+        self.api_key = api_key
+        self.model_name = model_name
         self.client = OpenAI(
             api_key=self.api_key,
             base_url="https://generativelanguage.googleapis.com/v1beta/",
@@ -72,6 +71,3 @@ class GeminiApi(BaseApi):
                         )
                 response_list = []
                 batch_idx += 1
-
-    def call_batch(self, batch_file, batch_size=100):
-        raise NotImplementedError
