@@ -1,4 +1,7 @@
+import os
 import requests
+import pandas as pd
+from dotenv import load_dotenv
 from langchain_community.retrievers import WikipediaRetriever
 
 
@@ -50,11 +53,13 @@ def search_keyword(keyword, language="ko", load_max_docs=3):
 
 
 # 메인 retrieval 로직 함수
-def main(titles, language="ko", load_max_docs=3):
+def main(titles, language="ko", load_max_docs=1):
     """
     1. 입력받은 타이틀 리스트의 요소에 대해 타이틀 기반 문서 검색
     2. 타이틀이 일치하는 문서가 없을 경우 키워드 검색으로 대체
     """
+    retrieved_texts = []
+
     for idx, title in enumerate(titles, start=1):
         print(f"\n=== Processing Title {idx}/{len(titles)}: {title} ===")
         result = search_title(title, language)
@@ -62,26 +67,45 @@ def main(titles, language="ko", load_max_docs=3):
         if result is None:
             print(f"'{title}' 문서를 찾을 수 없습니다.")
             keyword_result = search_keyword(title, language, load_max_docs)
-
             if isinstance(keyword_result, dict) and "error" in keyword_result:
                 print(f"키워드 검색 실패: {keyword_result['error']}")
+                retrieved_texts.append(None)
             else:
-                print("키워드 검색 결과:")
-                for i, doc in enumerate(keyword_result, start=1):
-                    print(f"Document {i}:")
-                    print(f"Title: {doc.metadata.get('title', 'No Title')}")
-                    print(f"Content: {doc.metadata.get('summary', 'No Summary')}\n")
+                combined_text = "\n".join(
+                    [
+                        doc.metadata.get("summary", "No Summary")
+                        for doc in keyword_result
+                    ]
+                )
+                retrieved_texts.append(combined_text)
         elif "error" in result:
             print(f"Error: {result['error']}")
+            retrieved_texts.append(None)
         else:
-            print(f"Page ID: {result['page_id']}")
-            print(f"Title: {result['title']}")
-            print(f"Content: {result['summary']}")
+            retrieved_texts.append(result["summary"])
+    return retrieved_texts
 
 
 if __name__ == "__main__":
-    # 검색할 타이틀 리스트
-    titles = ["커피", "주식", "비트코인"]
+    load_dotenv()
 
-    # 메인 실행
-    main(titles)
+    # 데이터 로드
+    file_path = os.path.join(
+        os.getenv("ROOT_DIR"), "data/validation_keyword_qwen_three.csv"
+    )
+    data = pd.read_csv(file_path)
+
+    # is_social이 1인 경우 keywords 추출 및 main 실행
+    data["document"] = data.apply(
+        lambda row: (
+            main(eval(row["keywords"]), "ko") if row["is_social"] == 1 else None
+        ),
+        axis=1,
+    )
+
+    # 결과 저장
+    output_path = os.path.join(
+        os.getenv("ROOT_DIR"), "data/validation_keyword_qwen_three_2.csv"
+    )
+    data.to_csv(output_path, index=False)
+    print(f"Results saved to {output_path}")
