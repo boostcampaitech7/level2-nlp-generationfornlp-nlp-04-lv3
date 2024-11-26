@@ -21,3 +21,4 @@ grade7-exam-data/
 *.pid
 .enqueue_history
 job_progress.txt
+RAG/
