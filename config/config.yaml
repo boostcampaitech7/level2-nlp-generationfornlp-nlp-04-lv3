@@ -1,19 +1,20 @@
-model_name: beomi/gemma-ko-2b
+model_name: Qwen/Qwen2.5-3B-Instruct
 data:
-  dataset_name: default
+  dataset_name: default_extract_syn
   module_name: KSATDataModule
   preprocessing_num_workers: 4
-  max_seq_length: 1024
+  max_seq_length: 2048
   max_answer_length: 30
   doc_stride: 128
   batch_size: 16
-  prompt_func: simple_prompt
-trainer_type: SFT     # Options: SFT, PPO, DPO
+  prompt_func: cot_prompt   # Options: simple, cot, dpo
+trainer_type: CoT     # Options: SFT, CoT, DPO
+use_unsloth: true
 training_params:
   num_epochs: 2
-  batch_size: 2
+  batch_size: 1
   learning_rate: 2e-5
   output_dir: outputs
-  max_seq_length: 1024
+  max_seq_length: 2048
 wandb:
   project: GenerationNLP
