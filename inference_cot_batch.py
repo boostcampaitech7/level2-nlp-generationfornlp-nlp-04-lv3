@@ -49,31 +49,35 @@ def main(inference_mode, model_name, use_checkpoint):
     else:
         data_module.setup("train")
         test_prompt_dataset = data_module.get_prompt_dataset(
-            data_module.eval_dataset.select(range(20)).remove_columns(["answer", "solving"])
+            data_module.eval_dataset.remove_columns(["answer", "solving"])
         )
 
     # 4. inference
+    batch_size = 4  # 적절한 배치 크기로 조정
+    model_module.tokenizer.padding_side = "left"
+    model_module.tokenizer.pad_token_id = model_module.tokenizer.eos_token_id
     solvings = []
     ids = []
-
     if config.use_unsloth:
         FastLanguageModel.for_inference(model_module.model)
-        for data in tqdm(test_prompt_dataset):
-            _id = data["id"]
-            messages = data["messages"]
+        for idx in tqdm(range(0, len(test_prompt_dataset), batch_size)):
+            batch = test_prompt_dataset[idx:idx+batch_size]
+            messages = batch["messages"]
+            _id = batch["id"]
+            batch_input_ids = model_module.tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    return_tensors="pt",
+                    padding=True,
+                    truncation=True
+                ).to("cuda")
 
-            input_ids = model_module.tokenizer.apply_chat_template(
-                messages,
-                tokenize=True,
-                add_generation_prompt=True,
-                return_tensors="pt",
-            ).to("cuda")
-
-            attention_mask = (input_ids != model_module.tokenizer.pad_token_id).long()
+            batch_attention_mask = (batch_input_ids != model_module.tokenizer.pad_token_id).long()
 
             outputs = model_module.model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
+                input_ids=batch_input_ids,
+                attention_mask=batch_attention_mask,
                 max_new_tokens=2048,
                 num_beams=1,
                 temperature=0.7,
@@ -83,38 +87,38 @@ def main(inference_mode, model_name, use_checkpoint):
                 eos_token_id=model_module.tokenizer.eos_token_id,
                 pad_token_id=model_module.tokenizer.pad_token_id,
                 early_stopping=True,
-                use_cache=True,
             )
 
-            # 입력 프롬프트 이후 새로 생성된 내용만 디코딩
-            decoded_output = model_module.tokenizer.decode(
-                outputs[0][input_ids.shape[1] :], skip_special_tokens=True
-            )
-
-            solvings.append(decoded_output)
-            ids.append(_id)
+            for i, output in enumerate(outputs):
+                # 입력 프롬프트 이후 새로 생성된 내용만 디코딩
+                decoded_output = model_module.tokenizer.decode(
+                    output[batch_input_ids[i].shape[0]:], skip_special_tokens=True
+                )
+                solvings.append(decoded_output)
+                ids.append(_id[i])
 
     else:
         model_module.model.cuda()
         model_module.model.eval()
-        
         with torch.inference_mode():
-            for data in tqdm(test_prompt_dataset):
-                _id = data["id"]
-                messages = data["messages"]
+            for idx in tqdm(range(0, len(test_prompt_dataset), batch_size)):
+                batch = test_prompt_dataset[idx:idx+batch_size]
+                messages = batch["messages"]
+                _id = batch["id"]
+                batch_input_ids = model_module.tokenizer.apply_chat_template(
+                        messages,
+                        tokenize=True,
+                        add_generation_prompt=True,
+                        return_tensors="pt",
+                        padding=True,
+                        truncation=True
+                    ).to("cuda")
 
-                input_ids = model_module.tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=True,
-                    add_generation_prompt=True,
-                    return_tensors="pt",
-                ).to("cuda")
-
-                attention_mask = (input_ids != model_module.tokenizer.pad_token_id).long()
+                batch_attention_mask = (batch_input_ids != model_module.tokenizer.pad_token_id).long()
 
                 outputs = model_module.model.generate(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
+                    input_ids=batch_input_ids,
+                    attention_mask=batch_attention_mask,
                     max_new_tokens=2048,
                     num_beams=5,
                     temperature=0.7,
@@ -126,13 +130,13 @@ def main(inference_mode, model_name, use_checkpoint):
                     early_stopping=True,
                 )
 
-                # 입력 프롬프트 이후 새로 생성된 내용만 디코딩
-                decoded_output = model_module.tokenizer.decode(
-                    outputs[0][input_ids.shape[1] :], skip_special_tokens=True
-                )
-
-                solvings.append(decoded_output)
-                ids.append(_id)
+                for i, output in enumerate(outputs):
+                    # 입력 프롬프트 이후 새로 생성된 내용만 디코딩
+                    decoded_output = model_module.tokenizer.decode(
+                        output[batch_input_ids[i].shape[0]:], skip_special_tokens=True
+                    )
+                    solvings.append(decoded_output)
+                    ids.append(_id[i])
 
     df = pd.DataFrame(
         {
@@ -168,7 +172,7 @@ if __name__ == "__main__":
             "validation" if "mode" not in kwargs.keys() else kwargs["mode"]
         ),  # validation
         model_name=(
-            "unsloth-Qwen2.5-7B-Instruct_CoT_data=default_extract_syn_lr=2e-05_bz=1_acc=0.7954"
+            "Qwen-Qwen2.5-7B-Instruct_CoT_data=default_extract_syn_lr=2e-05_bz=1_acc=0.7954"
             if "model_name" not in kwargs.keys()
             else kwargs["model_name"]
         ),  # 사용할 checkpoint 폴더명 or 사전학습 모델명 입력
