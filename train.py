@@ -29,9 +29,10 @@ def main(config):
             trainer_module = KsatTrainer(model_module, data_module, config)
         elif config.trainer_type == "CoT":
             trainer_module = KsatCoTTrainer(model_module, data_module, config)
-    
+
     elif config.trainer_type == "DPO":
-        checkpoint_dir = "Qwen-Qwen2.5-3B-Instruct_CoT_data=default_lr=2e-05_bz=1_acc=0.7013"
+        # DPO를 위한 SFT 체크포인트 경로를 입력해주세요
+        checkpoint_dir = "unsloth-Qwen2.5-14B-Instruct_CoT_data=default_extract_syn_lr=2e-05_bz=1_acc=0.0000"
         ROOT_DIR = os.getenv("ROOT_DIR")
         run_path = os.path.join(ROOT_DIR, f"checkpoints/{checkpoint_dir}")
         sub_dir_list = os.listdir(run_path)
@@ -41,7 +42,7 @@ def main(config):
         # /checkpoints/{run_name}/checkpoint-{step}
         checkpoint_path = os.path.join(run_path, checkpoint_name)
 
-        model_module = KsatModel(checkpoint_path, config)
+        model_module = KsatModel(checkpoint_path, config, use_checkpoint=True)
         model_module.setup()
 
         data_module = KsatDataModule(model_module.tokenizer, config)

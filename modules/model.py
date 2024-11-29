@@ -1,7 +1,7 @@
 import torch
+from unsloth import FastLanguageModel
 from peft import AutoPeftModelForCausalLM
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from unsloth import FastLanguageModel
 
 
 class KsatModel:
@@ -55,10 +55,10 @@ class KsatModel:
             )
         else:
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-                model_name = self.model_name_or_checkpoint_path,
-                max_seq_length = self.config.training_params.max_seq_length,
-                dtype = torch.float16,
-                load_in_4bit = False,
+                model_name=self.model_name_or_checkpoint_path,
+                max_seq_length=self.config.training_params.max_seq_length,
+                dtype=torch.float16,
+                load_in_4bit=False,
             )
 
             if not self.use_checkpoint:
@@ -81,17 +81,24 @@ class KsatModel:
 
             self.model = FastLanguageModel.get_peft_model(
                 self.model,
-                r = 16, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-                target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                                "gate_proj", "up_proj", "down_proj",],
-                lora_alpha = 16,
-                lora_dropout = 0, # Supports any, but = 0 is optimized
-                bias = "none",    # Supports any, but = "none" is optimized
+                r=16,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+                target_modules=[
+                    "q_proj",
+                    "k_proj",
+                    "v_proj",
+                    "o_proj",
+                    "gate_proj",
+                    "up_proj",
+                    "down_proj",
+                ],
+                lora_alpha=16,
+                lora_dropout=0,  # Supports any, but = 0 is optimized
+                bias="none",  # Supports any, but = "none" is optimized
                 # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-                use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
-                random_state = 3407,
-                use_rslora = False,  # We support rank stabilized LoRA
-                loftq_config = None, # And LoftQ
+                use_gradient_checkpointing="unsloth",  # True or "unsloth" for very long context
+                random_state=3407,
+                use_rslora=False,  # We support rank stabilized LoRA
+                loftq_config=None,  # And LoftQ
             )
 
     @staticmethod
@@ -118,7 +125,12 @@ class KsatModel:
             response_template = "<|start_header_id|>assistant<|end_header_id|>\n\n"
         elif model_name == "CarrotAI/Llama-3.2-Rabbit-Ko-3B-Instruct":
             response_template = "<|start_header_id|>assistant<|end_header_id|>\n\n"
-        elif model_name in ["Qwen/Qwen2.5-3B-Instruct", "unsloth/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-7B-Instruct"]:
+        elif model_name in [
+            "Qwen/Qwen2.5-3B-Instruct",
+            "unsloth/Qwen2.5-7B-Instruct",
+            "Qwen/Qwen2.5-7B-Instruct",
+            "unsloth/Qwen2.5-14B-Instruct",
+        ]:
             response_template = "<|im_start|>assistant\n"
         else:
             response_template = ""

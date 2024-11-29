@@ -136,7 +136,7 @@ class KsatTrainer:
             data_collator=data_collator,
             compute_metrics=compute_metrics,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-            peft_config=peft_config,
+            peft_config=peft_config if not self.config.use_unsloth else None,
             args=sft_config,
         )
 
@@ -348,8 +348,8 @@ class KsatDPOTrainer:
             save_only_model=True,
             save_total_limit=1,
             fp16=True,
-            gradient_accumulation_steps=4,
-            optim="adafactor"
+            gradient_accumulation_steps=8,
+            optim="adafactor",
         )
 
         model_module.model.gradient_checkpointing_enable()
@@ -365,7 +365,7 @@ class KsatDPOTrainer:
         )
 
         return trainer
-    
+
     def train(self):
         wandb.init(project=self.config.wandb.project, name=self.run_name)
         self.trainer.train()

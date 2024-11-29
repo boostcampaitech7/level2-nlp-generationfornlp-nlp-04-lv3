@@ -33,14 +33,14 @@ def main(inference_mode, model_name, use_checkpoint):
 
     # 1. model, tokenizer 세팅
     model_module = KsatModel(
-        model_name_or_checkpoint_path, use_checkpoint=use_checkpoint
+        model_name_or_checkpoint_path, config, use_checkpoint=use_checkpoint
     )
     model_module.setup()
     if not use_checkpoint:
         model_module.model.cuda()
 
     # 2. data module 세팅
-    data_module = KsatDataModule(model_module.tokenizer, config.data)
+    data_module = KsatDataModule(model_module.tokenizer, config)
 
     # inference dataset -> prompt 데이터로 변환
     if inference_mode == "test":
@@ -108,12 +108,12 @@ if __name__ == "__main__":
             "test" if "mode" not in kwargs.keys() else kwargs["mode"]
         ),  # validation
         model_name=(
-            "beomi/gemma-ko-2b"
+            "Qwen-Qwen2.5-14B-Instruct_SFT_data=all_lr=2e-05_bz=1_acc=0.0000"
             if "model_name" not in kwargs.keys()
             else kwargs["model_name"]
         ),  # 사용할 checkpoint 폴더명 or 사전학습 모델명 입력
         # checkpoint 사용하는 경우 use_checkpoint를 True로, 미학습 모델을 사용하는 경우 False로 설정해주세요.
         use_checkpoint=(
-            False if "use_checkpoint" not in kwargs.keys() else kwargs["use_checkpoint"]
+            True if "use_checkpoint" not in kwargs.keys() else kwargs["use_checkpoint"]
         ),
     )
