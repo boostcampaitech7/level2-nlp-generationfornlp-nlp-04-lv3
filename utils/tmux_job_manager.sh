@@ -53,6 +53,9 @@ QUEUE_FILE="$ROOT_DIR/job_queue.txt"
 ENQUEUE_SCRIPT="$ROOT_DIR/utils/enqueue.sh"
 WORKER_LOG="$ROOT_DIR/job_worker.log"
 
+# 사용자의 환경 변수와 PATH 설정 로드
+source ~/.bashrc
+
 # 파일이 없으면 생성
 if [ ! -f "$QUEUE_FILE" ]; then
     echo "Initializing job queue..." > "$QUEUE_FILE"
