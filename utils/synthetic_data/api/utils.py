@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List
 import pandas as pd
 
+
 MODEL_COSTS = {
     "gpt-4o-mini": [0.150 / 1000000, 0.600 / 1000000],
     "claude-3-5-sonnet-20241022": [3.00 / 1000000, 15.00 / 1000000],
@@ -17,16 +18,6 @@ class Problems(BaseModel):
     note: str = Field(description="문제를 해결하기 위한 추가 정보 또는 주석")
     choices: List[str] = Field(description="선택 가능한 답변 목록")
     answer: int = Field(description="정답을 나타내는 선택지의 인덱스")
-
-
-"""
-class Problems(BaseModel):
-    paragraph: str = Field(description="The main content provided to solve the problem")
-    question: str = Field(description="The question or content of the problem")
-    note: str = Field(description="Additional information or notes to help solve the problem")
-    choices: List[str] = Field(description="A list of possible answer choices")
-    answer: int = Field(description="The index of the correct answer among the choices")
-"""
 
 
 def calculate_cost(model_name, input_tokens, output_tokens):

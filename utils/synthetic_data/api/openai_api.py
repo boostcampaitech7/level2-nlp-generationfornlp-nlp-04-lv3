@@ -4,7 +4,7 @@ from tqdm import tqdm
 from openai import OpenAI
 from openai.lib._pydantic import to_strict_json_schema
 
-from syn_data.api.base import BaseApi
+from api.base import BaseApi
 
 
 class OpenAIApi(BaseApi):

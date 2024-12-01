@@ -1,12 +1,11 @@
 import os
 import json
 import pandas as pd
-from dotenv import load_dotenv
-from syn_data.api.utils import Problems
+from api.utils import Problems
 
-from syn_data.api.openai_api import OpenAIApi
-from syn_data.api.claude_api import ClaudeApi
-from syn_data.prompt_builder import SynDataGenPromptBuilder
+from api.openai_api import OpenAIApi
+from api.claude_api import ClaudeApi
+from prompt_builder import SynDataGenPromptBuilder
 
 
 class SynDataGenerator:

@@ -1,14 +1,14 @@
 import os
 import json
 import time
-from dotenv import load_dotenv
 import ast
 import pytz
-from syn_data.syn_data_gen import SynDataGenerator
 import pandas as pd
 import streamlit as st
 from datetime import datetime
+from dotenv import load_dotenv
 
+from generator import SynDataGenerator
 
 aug_prompt = """당신은 수능 문제 출제위원입니다. 문제의 지문과 질문에 사용된 핵심 개념이나 내용을 바탕으로 새로운 수능형 문제를 작성하시오. 작성할 문제는 다음 조건을 충족해야 합니다:
 1. 핵심 개념 연계: 지문과 질문은 기존 문제의 핵심 개념과 관련되되, 내용은 완전히 새롭게 구성합니다.
@@ -216,6 +216,6 @@ if __name__ == "__main__":
         "claude": os.getenv("CLAUDE_KEY"),
     }
     data_dir = (
-        "/data/ephemeral/home/gj/level2-nlp-generationfornlp-nlp-04-lv3/_data/test"
+        "/Users/gj/Downloads/level2-nlp-generationfornlp-nlp-04-lv3-1/data"
     )
     main(api_key, data_dir, history_file=os.path.join(data_dir, "history.jsonl"))

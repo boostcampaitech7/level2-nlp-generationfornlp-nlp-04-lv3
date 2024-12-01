@@ -5,8 +5,8 @@ from anthropic import Anthropic
 from anthropic.types.beta.message_create_params import MessageCreateParamsNonStreaming
 from anthropic.types.beta.messages.batch_create_params import Request
 
-from syn_data.api.base import BaseApi
-from syn_data.api.utils import remove_titles
+from api.base import BaseApi
+from api.utils import remove_titles
 
 
 class ClaudeApi(BaseApi):
