@@ -11,3 +11,6 @@ python-dotenv
 wandb
 pre-commit
 commitizen
+git+https://github.com/openai/swarm.git
+tqdm
+pandas
