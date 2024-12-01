@@ -3,22 +3,55 @@
 # 재접속 시
 # tmux attach-session -t job_manager
 SESSION_NAME="job_manager"
-ENV_FILE="/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/.env"
+
+# 패키지 설치 함수
+install_package() {
+    local package_name=$1
+    if ! command -v $package_name &> /dev/null; then
+        echo "$package_name이 설치되어 있지 않습니다. 설치를 시작합니다..."
+        apt-get update
+        apt-get install -y $package_name
+        if [ $? -ne 0 ]; then
+            echo "$package_name 설치에 실패했습니다. 시스템 관리자에게 문의하세요."
+            exit 1
+        fi
+        echo "$package_name 설치가 완료되었습니다."
+    fi
+}
+
+# 필요한 의존성 설치
+echo "필요한 의존성을 확인하고 설치합니다..."
+install_package tmux
+
+# 현재 스크립트의 디렉토리 경로 확인
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$PROJECT_ROOT/.env"
 
 # .env 파일 로드
 if [ -f "$ENV_FILE" ]; then
     source "$ENV_FILE"
 else
     echo ".env 파일을 찾을 수 없습니다: $ENV_FILE"
-    exit 1
+    echo "새로운 .env 파일을 생성합니다."
+    
+    # 사용자로부터 ROOT_DIR 입력받기 (기본값: 현재 프로젝트 디렉토리)
+    read -p "프로젝트 루트 디렉토리 경로를 입력하세요 [기본값: $PROJECT_ROOT]: " ROOT_DIR
+    ROOT_DIR=${ROOT_DIR:-$PROJECT_ROOT}
+    
+    # .env 파일 생성
+    cat > "$ENV_FILE" << EOL
+ROOT_DIR="${ROOT_DIR}"
+EOL
+    
+    echo ".env 파일이 성공적으로 생성되었습니다: $ENV_FILE"
+    source "$ENV_FILE"
 fi
 
 # ROOT_DIR 기반으로 경로 설정
 QUEUE_FILE="$ROOT_DIR/job_queue.txt"
 ENQUEUE_SCRIPT="$ROOT_DIR/utils/enqueue.sh"
 WORKER_LOG="$ROOT_DIR/job_worker.log"
-
-source ~/.bashrc
 
 # 파일이 없으면 생성
 if [ ! -f "$QUEUE_FILE" ]; then
