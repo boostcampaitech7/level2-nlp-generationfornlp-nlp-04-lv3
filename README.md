@@ -120,4 +120,4 @@ Ko-MMLU, Multilingual MMLU, KLUE-MRC, 수능 데이터로 학습된 사전학습
 
 ## 6 Wrap-up Report
 
-자세한 내용은 <a href="https://github.com/boostcampaitech7/level2-nlp-generationfornlp-nlp-04-lv3/blob/develop/GenerationforNLP_NLP_%ED%8C%80%20%EB%A6%AC%ED%8F%AC%ED%8A%B8(04%EC%A1%B0).pdf">**Wrap-up Report**</a>를 참고해 주세요 !
+자세한 내용은 <a href="https://github.com/boostcampaitech7/level2-nlp-generationfornlp-nlp-04-lv3/blob/main/GenerationforNLP_NLP_%ED%8C%80%20%EB%A6%AC%ED%8F%AC%ED%8A%B8(04%EC%A1%B0).pdf">**Wrap-up Report**</a>를 참고해 주세요 !
