@@ -8,14 +8,17 @@ import re
 
 
 class KeywordExtractor:
-    def __init__(self, model_name="qwen2.5:32b-instruct-q6_K", data_path="data/validation_aug_cot.csv"):  # gemma2:27b
+    def __init__(
+        self,
+        model_name="qwen2.5:32b-instruct-q6_K",
+        data_path="data/validation_aug_cot.csv",
+    ):  # gemma2:27b
         load_dotenv()
         self.model_name = model_name
         self.data_path = data_path
         self.llm = OllamaLLM(model=self.model_name)
         ROOT_DIR = os.getenv("ROOT_DIR")
         self.test = pd.read_csv(os.path.join(ROOT_DIR, self.data_path))
-
 
     def generate_prompt(self, question, input_text, choices):
         return f"""
@@ -47,18 +50,24 @@ class KeywordExtractor:
 
     def extract_keywords_and_social(self):
         # question
-        self.test['question'] = self.test['problems'].apply(lambda x: ast.literal_eval(x).get('question') if isinstance(x, str) else None)
+        self.test["question"] = self.test["problems"].apply(
+            lambda x: (
+                ast.literal_eval(x).get("question") if isinstance(x, str) else None
+            )
+        )
         # choices
-        self.test['choices'] = self.test['problems'].apply(lambda x: ast.literal_eval(x).get('choices') if isinstance(x, str) else None)
+        self.test["choices"] = self.test["problems"].apply(
+            lambda x: ast.literal_eval(x).get("choices") if isinstance(x, str) else None
+        )
 
         is_social = []
         keywords = []
 
         for index, row in self.test.iterrows():
-            input_text = row['paragraph']
-            question = row['question']
-            choices = row['choices']
-            
+            input_text = row["paragraph"]
+            question = row["question"]
+            choices = row["choices"]
+
             formatted_prompt = self.generate_prompt(question, input_text, choices)
 
             # Ollama 모델에 프롬프트 전달하여 텍스트 복원
@@ -66,37 +75,42 @@ class KeywordExtractor:
 
             # 응답 내용 출력 for 디버깅
             print("응답:", response)
-            
-            keyword_match = re.search(r"키워드: \[([^\]]+)\]", response)  # 키워드를 리스트 형식으로 추출
-            is_social_match = re.search(r'is_social: (\d)', response)
+
+            keyword_match = re.search(
+                r"키워드: \[([^\]]+)\]", response
+            )  # 키워드를 리스트 형식으로 추출
+            is_social_match = re.search(r"is_social: (\d)", response)
 
             if is_social_match:
                 is_social_value = int(is_social_match.group(1))
 
                 if is_social_value == 1 and keyword_match:
                     # 쉼표로 구분된 키워드를 리스트로 변환
-                    extracted_keywords = [keyword.strip() for keyword in keyword_match.group(1).split(',')]
+                    extracted_keywords = [
+                        keyword.strip() for keyword in keyword_match.group(1).split(",")
+                    ]
                 else:
                     extracted_keywords = []
             else:
                 extracted_keywords = []
                 is_social_value = None
-            
+
             # 결과 저장
             keywords.append(extracted_keywords)
             print("키워드:", extracted_keywords)
             is_social.append(is_social_value)
             print("사회인가:", is_social_value)
-            
+
             # 요청 간에 약간의 대기 시간을 두어 API 호출 과부하를 방지
-            #time.sleep(0.2) # 필요시 조정 가능
-        
+            # time.sleep(0.2) # 필요시 조정 가능
+
         return keywords, is_social
 
 
-
 # 클래스 사용 예시 - 키워드, 사회여부 추출
-extractor = KeywordExtractor(model_name="qwen2.5:32b-instruct-q6_K", data_path ="data/validation_aug_cot.csv") # gemma2:27b
+extractor = KeywordExtractor(
+    model_name="qwen2.5:32b-instruct-q6_K", data_path="data/validation_aug_cot.csv"
+)  # gemma2:27b
 keywords, is_social = extractor.extract_keywords_and_social()
 
 
@@ -104,8 +118,8 @@ keywords, is_social = extractor.extract_keywords_and_social()
 load_dotenv()
 ROOT_DIR = os.getenv("ROOT_DIR")
 test = pd.read_csv(os.path.join(ROOT_DIR, "data/validation_aug_cot.csv"))
-test['keywords'] = keywords
-test['is_social'] = is_social
+test["keywords"] = keywords
+test["is_social"] = is_social
 output_path = os.path.join(ROOT_DIR, f"RAG/qwen_validation_cot_keyword_2.csv")
 test.to_csv(output_path, index=False)
 print("추출한 키워드를 확인하기 위한 validation 데이터가 CSV 파일로 저장되었습니다.")

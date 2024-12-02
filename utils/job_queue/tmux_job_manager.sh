@@ -34,16 +34,16 @@ if [ -f "$ENV_FILE" ]; then
 else
     echo ".env 파일을 찾을 수 없습니다: $ENV_FILE"
     echo "새로운 .env 파일을 생성합니다."
-    
+
     # 사용자로부터 ROOT_DIR 입력받기 (기본값: 현재 프로젝트 디렉토리)
     read -p "프로젝트 루트 디렉토리 경로를 입력하세요 [기본값: $PROJECT_ROOT]: " ROOT_DIR
     ROOT_DIR=${ROOT_DIR:-$PROJECT_ROOT}
-    
+
     # .env 파일 생성
     cat > "$ENV_FILE" << EOL
 ROOT_DIR="${ROOT_DIR}"
 EOL
-    
+
     echo ".env 파일이 성공적으로 생성되었습니다: $ENV_FILE"
     source "$ENV_FILE"
 fi

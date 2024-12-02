@@ -233,13 +233,23 @@ def dpo_prompt(example):
     정답: {answer}
     """
     chosen = [
-        {"role": "assistant", "content": assistant_response.format(solving=example["chosen"], answer=example["answer"])}
+        {
+            "role": "assistant",
+            "content": assistant_response.format(
+                solving=example["chosen"], answer=example["answer"]
+            ),
+        }
     ]
 
     rejected = [
-        {"role": "assistant", "content": assistant_response.format(solving=example["rejected"], answer=example["answer"])}
+        {
+            "role": "assistant",
+            "content": assistant_response.format(
+                solving=example["rejected"], answer=example["answer"]
+            ),
+        }
     ]
-    
+
     chat_message = {
         "id": example["id"],
         "prompt": prompt,
