@@ -1,0 +1,16 @@
+ipykernel
+ipywidgets
+torch
+transformers
+trl
+scikit-learn
+matplotlib
+evaluate
+peft
+python-dotenv
+wandb
+pre-commit
+commitizen
+git+https://github.com/openai/swarm.git
+tqdm
+pandas
