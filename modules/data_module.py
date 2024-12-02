@@ -5,7 +5,7 @@ from datasets import Dataset
 from ast import literal_eval
 from dotenv import load_dotenv
 
-from utils import generate_prompt
+from modules import generate_prompt
 
 
 class KsatDataModule:
@@ -35,18 +35,24 @@ class KsatDataModule:
                     self.train_dataset
                 )
             else:
-                self.eval_dataset = self.get_dataset("validation")   
+                self.eval_dataset = self.get_dataset("validation")
                 self.train_examples, self.train_indices = self.get_examples(
                     self.train_dataset
                 )
-                self.eval_examples, self.eval_indices = self.get_examples(self.eval_dataset)
+                self.eval_examples, self.eval_indices = self.get_examples(
+                    self.eval_dataset
+                )
         else:
             self.test_dataset = self.get_dataset("test")
 
             if self.config.trainer_type == "DPO":
-                self.test_examples, self.test_indices = self.get_dpo_examples(self.test_dataset)
+                self.test_examples, self.test_indices = self.get_dpo_examples(
+                    self.test_dataset
+                )
             else:
-                self.test_examples, self.test_indices = self.get_examples(self.test_dataset)
+                self.test_examples, self.test_indices = self.get_examples(
+                    self.test_dataset
+                )
 
     # 원본 데이터셋
     def get_dataset(self, split="train"):
@@ -72,12 +78,14 @@ class KsatDataModule:
             }
             if "question_plus" in problems:
                 record["question_plus"] = problems["question_plus"]
-    
+
             if split != "test" and self.config.trainer_type == "CoT":
                 record["solving"] = row["claude-solving"]
             elif self.config.trainer_type == "DPO":
                 record["chosen"] = row["claude-solving"]
-                record["rejected"] = row["openai-solving"] if i%2 else row["qwen-solving"]
+                record["rejected"] = (
+                    row["openai-solving"] if i % 2 else row["qwen-solving"]
+                )
             records.append(record)
 
         # Convert to DataFrame
@@ -106,7 +114,7 @@ class KsatDataModule:
                 filtered_indices.append(idx)
         filtered_dataset = Dataset.from_list(filtered_dataset)
         return filtered_dataset, filtered_indices
-    
+
     def get_dpo_examples(self, dataset):
         prompt_dataset = self.get_prompt_dataset(dataset)
         tokenized_dataset = prompt_dataset.map(
@@ -122,7 +130,12 @@ class KsatDataModule:
         filtered_dataset = []
         filtered_indices = []
         for idx, example in enumerate(tokenized_dataset):
-            if len(example["prompt_input_ids"] + example["chosen_input_ids"]) <= self.config.data.max_seq_length or len(example["prompt_input_ids"] + example["rejected_input_ids"]) <= self.config.data.max_seq_length:
+            if (
+                len(example["prompt_input_ids"] + example["chosen_input_ids"])
+                <= self.config.data.max_seq_length
+                or len(example["prompt_input_ids"] + example["rejected_input_ids"])
+                <= self.config.data.max_seq_length
+            ):
                 filtered_dataset.append(example)
                 filtered_indices.append(idx)
         filtered_dataset = Dataset.from_list(filtered_dataset)
@@ -145,9 +158,9 @@ class KsatDataModule:
         output_texts = []
         for i in range(len(data[key])):
             output_text = self.tokenizer.apply_chat_template(
-                    data[key][i],
-                    tokenize=False,
-                )
+                data[key][i],
+                tokenize=False,
+            )
             if key != "prompt":
                 output_text = output_text.strip()
 
