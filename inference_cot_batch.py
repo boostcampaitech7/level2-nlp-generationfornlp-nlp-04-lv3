@@ -1,4 +1,5 @@
 import os
+import csv
 import torch
 import argparse
 import pandas as pd
@@ -11,7 +12,7 @@ from modules.model import KsatModel
 from modules.data_module import KsatDataModule
 
 
-def main(inference_mode, model_name, use_checkpoint):
+def main(inference_mode, model_name, use_checkpoint, batch_size):
     load_dotenv()
 
     # 0. 모델 경로 설정
@@ -49,31 +50,44 @@ def main(inference_mode, model_name, use_checkpoint):
     else:
         data_module.setup("train")
         test_prompt_dataset = data_module.get_prompt_dataset(
-            data_module.eval_dataset.select(range(20)).remove_columns(["answer", "solving"])
+            data_module.eval_dataset.remove_columns(["answer", "solving"])
         )
 
     # 4. inference
-    solvings = []
-    ids = []
+    model_module.tokenizer.padding_side = "left"
+    model_module.tokenizer.pad_token_id = model_module.tokenizer.eos_token_id
 
+    # 아웃풋 파일 생성
+    df = pd.DataFrame(columns=["id", "solving"])
+    output_path = os.path.join(
+        ROOT_DIR,
+        f"predictions/{model_name.replace('/', '-')}_{inference_mode}_predictions.csv",
+    )
+    df.to_csv(output_path, index=False, quoting=0)
+
+    # 4-1. with Unsloth
     if config.use_unsloth:
         FastLanguageModel.for_inference(model_module.model)
-        for data in tqdm(test_prompt_dataset):
-            _id = data["id"]
-            messages = data["messages"]
-
-            input_ids = model_module.tokenizer.apply_chat_template(
+        for idx in tqdm(range(0, len(test_prompt_dataset), batch_size)):
+            batch = test_prompt_dataset[idx : idx + batch_size]
+            messages = batch["messages"]
+            _id = batch["id"]
+            batch_input_ids = model_module.tokenizer.apply_chat_template(
                 messages,
                 tokenize=True,
                 add_generation_prompt=True,
                 return_tensors="pt",
+                padding=True,
+                truncation=True,
             ).to("cuda")
 
-            attention_mask = (input_ids != model_module.tokenizer.pad_token_id).long()
+            batch_attention_mask = (
+                batch_input_ids != model_module.tokenizer.pad_token_id
+            ).long()
 
             outputs = model_module.model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
+                input_ids=batch_input_ids,
+                attention_mask=batch_attention_mask,
                 max_new_tokens=2048,
                 num_beams=1,
                 temperature=0.7,
@@ -83,38 +97,45 @@ def main(inference_mode, model_name, use_checkpoint):
                 eos_token_id=model_module.tokenizer.eos_token_id,
                 pad_token_id=model_module.tokenizer.pad_token_id,
                 early_stopping=True,
-                use_cache=True,
             )
 
-            # 입력 프롬프트 이후 새로 생성된 내용만 디코딩
-            decoded_output = model_module.tokenizer.decode(
-                outputs[0][input_ids.shape[1] :], skip_special_tokens=True
-            )
+            for i, output in enumerate(outputs):
+                # 입력 프롬프트 이후 새로 생성된 내용만 디코딩
+                decoded_output = model_module.tokenizer.decode(
+                    output[batch_input_ids[i].shape[0] :], skip_special_tokens=True
+                )
 
-            solvings.append(decoded_output)
-            ids.append(_id)
+                # 출력이 생성될 때마다 csv에 바로 추가
+                new_row = [_id[i], decoded_output]
+                with open(output_path, mode="a", newline="", encoding="utf-8") as file:
+                    writer = csv.writer(file)
+                    writer.writerow(new_row)
 
+    # 4-2. withouth Unsloth
     else:
         model_module.model.cuda()
         model_module.model.eval()
-        
         with torch.inference_mode():
-            for data in tqdm(test_prompt_dataset):
-                _id = data["id"]
-                messages = data["messages"]
-
-                input_ids = model_module.tokenizer.apply_chat_template(
+            for idx in tqdm(range(0, len(test_prompt_dataset), batch_size)):
+                batch = test_prompt_dataset[idx : idx + batch_size]
+                messages = batch["messages"]
+                _id = batch["id"]
+                batch_input_ids = model_module.tokenizer.apply_chat_template(
                     messages,
                     tokenize=True,
                     add_generation_prompt=True,
                     return_tensors="pt",
+                    padding=True,
+                    truncation=True,
                 ).to("cuda")
 
-                attention_mask = (input_ids != model_module.tokenizer.pad_token_id).long()
+                batch_attention_mask = (
+                    batch_input_ids != model_module.tokenizer.pad_token_id
+                ).long()
 
                 outputs = model_module.model.generate(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
+                    input_ids=batch_input_ids,
+                    attention_mask=batch_attention_mask,
                     max_new_tokens=2048,
                     num_beams=5,
                     temperature=0.7,
@@ -126,27 +147,19 @@ def main(inference_mode, model_name, use_checkpoint):
                     early_stopping=True,
                 )
 
-                # 입력 프롬프트 이후 새로 생성된 내용만 디코딩
-                decoded_output = model_module.tokenizer.decode(
-                    outputs[0][input_ids.shape[1] :], skip_special_tokens=True
-                )
+                for i, output in enumerate(outputs):
+                    # 입력 프롬프트 이후 새로 생성된 내용만 디코딩
+                    decoded_output = model_module.tokenizer.decode(
+                        output[batch_input_ids[i].shape[0] :], skip_special_tokens=True
+                    )
 
-                solvings.append(decoded_output)
-                ids.append(_id)
-
-    df = pd.DataFrame(
-        {
-            "id": ids,
-            "solving": solvings,
-        }
-    )
-
-    # 5. predictions 저장
-    output_path = os.path.join(
-        ROOT_DIR,
-        f"predictions/{model_name.replace('/', '-')}_{inference_mode}_predictions.csv",
-    )
-    df.to_csv(output_path, index=False, quoting=0)
+                    # 출력이 생성될 때마다 csv에 바로 추가
+                    new_row = [_id[i], decoded_output]
+                    with open(
+                        output_path, mode="a", newline="", encoding="utf-8"
+                    ) as file:
+                        writer = csv.writer(file)
+                        writer.writerow(new_row)
 
 
 if __name__ == "__main__":
@@ -160,15 +173,17 @@ if __name__ == "__main__":
             kwargs[key] = False
         elif key == "use_checkpoint" and value == "True":
             kwargs[key] = True
+        elif key == "batch_size":
+            kwargs[key] = int(value)
         else:
             kwargs[key] = value
 
     main(
         inference_mode=(
-            "validation" if "mode" not in kwargs.keys() else kwargs["mode"]
+            "test" if "mode" not in kwargs.keys() else kwargs["mode"]
         ),  # validation
         model_name=(
-            "unsloth-Qwen2.5-7B-Instruct_CoT_data=default_extract_syn_lr=2e-05_bz=1_acc=0.7954"
+            "unsloth-Qwen2.5-14B-Instruct_CoT_data=default_extract_syn_lr=2e-05_bz=1_acc=0.0000"
             if "model_name" not in kwargs.keys()
             else kwargs["model_name"]
         ),  # 사용할 checkpoint 폴더명 or 사전학습 모델명 입력
@@ -176,4 +191,5 @@ if __name__ == "__main__":
         use_checkpoint=(
             True if "use_checkpoint" not in kwargs.keys() else kwargs["use_checkpoint"]
         ),
+        batch_size=2,  # 적절한 배치 크기로 조정
     )

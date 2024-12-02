@@ -14,7 +14,6 @@ from trl import (
     DPOTrainer,
     DPOConfig,
 )
-from transformers import Adafactor
 
 
 class KsatTrainer:
@@ -137,7 +136,7 @@ class KsatTrainer:
             data_collator=data_collator,
             compute_metrics=compute_metrics,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-            peft_config=peft_config,
+            peft_config=peft_config if not self.config.use_unsloth else None,
             args=sft_config,
         )
 
@@ -299,8 +298,75 @@ class KsatCoTTrainer(KsatTrainer):
             data_collator=data_collator,
             compute_metrics=compute_metrics,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-            peft_config=peft_config,
+            peft_config=peft_config if not self.config.use_unsloth else None,
             args=sft_config,
         )
 
         return trainer
+
+
+class KsatDPOTrainer:
+    def __init__(self, model_module, data_module, config):
+        self.config = config
+        self.data_module = data_module
+        self.best_accuracy = 0
+        self.best_predictions = None
+        self.run_name = f"{config.model_name.replace('/', '-')}_{config.trainer_type}_data={config.data.dataset_name}_lr={config.training_params.learning_rate}_bz={config.training_params.batch_size}"
+        self.trainer = self._get_trainer(model_module, data_module, config)
+
+    def _get_trainer(self, model_module, data_module, config):
+        peft_config = LoraConfig(
+            r=6,
+            lora_alpha=8,
+            lora_dropout=0.05,
+            target_modules=["q_proj", "k_proj"],
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+
+        load_dotenv()
+        checkpoint_dir = os.path.join(os.getenv("ROOT_DIR"), "checkpoints")
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
+
+        output_dir = os.path.join(checkpoint_dir, self.run_name)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        dpo_config = DPOConfig(
+            do_train=True,
+            do_eval=True,
+            lr_scheduler_type="cosine",
+            output_dir=output_dir,
+            report_to="wandb",
+            per_device_train_batch_size=config.training_params.batch_size,
+            num_train_epochs=config.training_params.num_epochs,
+            learning_rate=config.training_params.learning_rate,
+            weight_decay=0.01,
+            logging_strategy="epoch",
+            save_strategy="epoch",
+            save_only_model=True,
+            save_total_limit=1,
+            fp16=True,
+            gradient_accumulation_steps=8,
+            optim="adafactor",
+        )
+
+        model_module.model.gradient_checkpointing_enable()
+
+        train_dataset = data_module.get_prompt_dataset(data_module.train_dataset)
+
+        trainer = DPOTrainer(
+            model=model_module.model,
+            train_dataset=train_dataset,
+            tokenizer=model_module.tokenizer,
+            peft_config=peft_config if not self.config.use_unsloth else None,
+            args=dpo_config,
+        )
+
+        return trainer
+
+    def train(self):
+        wandb.init(project=self.config.wandb.project, name=self.run_name)
+        self.trainer.train()
+        wandb.finish()
