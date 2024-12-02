@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 재접속 시
+# tmux attach-session -t job_manager
 SESSION_NAME="job_manager"
 ENV_FILE="/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/.env"
 
@@ -35,6 +37,10 @@ if [ $? != 0 ]; then
     tmux new-session -d -s "$SESSION_NAME" -n "Main" "watch -n 1 cat $QUEUE_FILE"
     # tmux 세션에서 마우스 모드 활성화
     tmux set-option -t "$SESSION_NAME" -g mouse on
+    # 화살표 키 히스토리 설정
+    tmux set-option -t "$SESSION_NAME" -g history-limit 10000
+    tmux set-window-option -t "$SESSION_NAME" -g mode-keys vi
+
     # 창을 수직으로 분할하여 하단에 새로운 패널 생성 (Pane 1)
     tmux split-window -h -t "${SESSION_NAME}:Main" -p 50
     tmux split-window -h -t "${SESSION_NAME}:Main.1" -p 50

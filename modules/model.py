@@ -74,6 +74,10 @@ class KsatModel:
             response_template = "<start_of_turn>model\n"
         elif model_name == "Bllossom/llama-3.2-Korean-Bllossom-3B":
             response_template = "<|start_header_id|>assistant<|end_header_id|>\n\n"
+        elif model_name == "CarrotAI/Llama-3.2-Rabbit-Ko-3B-Instruct":
+            response_template = "<|start_header_id|>assistant<|end_header_id|>\n\n"
+        elif model_name == "Qwen/Qwen2.5-3B-Instruct":
+            response_template = "<|im_start|>assistant\n"
         else:
             response_template = ""
         return response_template

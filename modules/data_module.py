@@ -51,6 +51,11 @@ class KsatDataModule:
             )
 
         records = []
+        is_cot = False
+
+        if "solving" in raw_df.columns:
+            is_cot = True
+
         for _, row in raw_df.iterrows():
             problems = literal_eval(row["problems"])
             record = {
@@ -63,6 +68,8 @@ class KsatDataModule:
             }
             if "question_plus" in problems:
                 record["question_plus"] = problems["question_plus"]
+            if is_cot:
+                record["solving"] = row["solving"]
             records.append(record)
 
         # Convert to DataFrame
@@ -112,7 +119,7 @@ class KsatDataModule:
                 self.tokenizer.apply_chat_template(
                     data["messages"][i],
                     tokenize=False,
-                )
+                ).strip()
             )
         return output_texts
 
