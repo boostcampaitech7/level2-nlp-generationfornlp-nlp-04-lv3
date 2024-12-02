@@ -1,6 +1,9 @@
 #!/bin/bash
 
-ENV_FILE="/data/ephemeral/home/level2-nlp-generationfornlp-nlp-04-lv3/.env"
+# 현재 스크립트의 디렉토리 경로 확인
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$PROJECT_ROOT/.env"
 
 # .env 파일 로드
 if [ -f "$ENV_FILE" ]; then
